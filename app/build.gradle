@@ -10,7 +10,11 @@ android {
         applicationId 'com.deeptally.modetest'
         minSdk 26
         targetSdk 34
-        versionCode 1
-        versionName '0.1-test'
+        versionCode 2
+        versionName '0.2-routine-test'
     }
+}
+
+dependencies {
+    implementation 'androidx.core:core:1.15.0'
 }
