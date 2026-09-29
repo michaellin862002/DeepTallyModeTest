@@ -1,20 +1,5 @@
-plugins {
-    id 'com.android.application'
+plugins { id 'com.android.application' }
+android { namespace 'com.deeptally.modetest'; compileSdk 35
+  defaultConfig { applicationId 'com.deeptally.modetest'; minSdk 26; targetSdk 34; versionCode 10; versionName '1.0-beta1' }
 }
-
-android {
-    namespace 'com.deeptally.modetest'
-    compileSdk 35
-
-    defaultConfig {
-        applicationId 'com.deeptally.modetest'
-        minSdk 26
-        targetSdk 34
-        versionCode 3
-        versionName '0.3-silent-trigger-test'
-    }
-}
-
-dependencies {
-    implementation 'androidx.core:core:1.15.0'
-}
+dependencies { implementation 'androidx.core:core:1.15.0' }

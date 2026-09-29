@@ -1,21 +1,17 @@
-# Deep Tally Mode Test
+# Deep Tally
 
-A tiny Android test app for checking whether a Samsung **Mode** configured with the condition **App opened**:
+Minimal Android deep-work tally. **Plan elsewhere. Tally here.**
 
-1. Turns on when this app is opened.
-2. Keeps running after this app leaves the foreground.
-3. Applies the expected Do Not Disturb (DND) state.
+## Core
+- One large START/STOP circle.
+- Wall-clock timer survives backgrounding/process death.
+- Sessions count only at >= 30:00; shorter attempts are kept but struck through.
+- Week bars + weekly goal.
+- History by date.
+- 我的自傳 with edit/save and autosaved drafts.
+- Local-only SQLite + SharedPreferences.
+- Samsung Routine triggers: `START_DEEP_WORK` and `STOP_DEEP_WORK`, silent and auto-expiring.
 
-## Test steps
-
-1. Build/install the APK.
-2. On the Samsung phone, open:
-   **Settings → Modes and Routines → Deep Work → Turn on automatically → App opened**
-3. Select **Deep Tally Mode Test**.
-4. Open the test app and check whether the Samsung Deep Work mode turns on.
-5. Tap **OPEN SETTINGS — LEAVE APP** or **GO HOME — LEAVE APP**.
-6. Without returning to the test app, check the status bar / Quick Settings:
-   - If Deep Work / DND stays on, the Samsung automation may be usable for Deep Tally.
-   - If it immediately turns off, the final app should not rely on this trigger alone.
-
-The app itself does **not** change DND. It only reads the current interruption-filter state and gives you buttons for leaving the app during the test.
+Keep the two Samsung routines already created:
+1. START_DEEP_WORK -> 開啟模式 -> 深度工作
+2. STOP_DEEP_WORK -> 詢問 Bixby -> 關閉深度工作模式

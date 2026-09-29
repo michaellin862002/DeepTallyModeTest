@@ -1,159 +1,113 @@
 package com.deeptally.modetest;
 
-import android.Manifest;
-import android.app.Activity;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
-import android.content.Context;
-import android.content.pm.PackageManager;
-import android.os.Build;
-import android.os.Bundle;
-import android.graphics.Color;
-import android.view.Gravity;
-import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.LinearLayout;
-import android.widget.TextView;
-
-import androidx.core.app.ActivityCompat;
-import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
+import android.app.*;
+import android.content.*;
+import android.graphics.*;
+import android.os.*;
+import android.view.*;
+import android.widget.*;
+import java.time.*;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
 
 public class MainActivity extends Activity {
-    // New channel ID so silent/vibration settings take effect even if an older
-    // notification channel already exists on the device.
-    private static final String CHANNEL_ID = "deep_tally_routine_trigger_silent_v2";
-    private static final int START_ID = 1001;
-    private static final int STOP_ID = 1002;
-    private static final long TRIGGER_TIMEOUT_MS = 3000L;
+  private static final String PREF="deep_tally", KSTART="timer_start", KGOAL="goal_min",
+    KBIO1="bio1",KBIO2="bio2",KD1="draft1",KD2="draft2",KUP="bio_updated";
+  private SharedPreferences p; private SessionDb db; private FrameLayout content,root; private LinearLayout nav;
+  private int tab=0; private CircleTimerView timer; private final Handler h=new Handler(Looper.getMainLooper());
+  private boolean editingBio=false; private EditText b1,b2; private TextView undo;
+  private long undoId=-1,undoStart=-1;
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        createNotificationChannel();
+  private final Runnable tick=new Runnable(){public void run(){long s=p.getLong(KSTART,0);if(s>0&&timer!=null){timer.setState(true,System.currentTimeMillis()-s);h.postDelayed(this,1000);}}};
 
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setGravity(Gravity.CENTER_HORIZONTAL);
-        root.setPadding(dp(24), dp(48), dp(24), dp(24));
-        root.setBackgroundColor(Color.rgb(247,247,247));
+  public void onCreate(Bundle b){super.onCreate(b);p=getSharedPreferences(PREF,MODE_PRIVATE);db=new SessionDb(this);if(!p.contains(KGOAL))p.edit().putInt(KGOAL,360).apply();Notifier.init(this);Notifier.request(this);shell();show(0);}
+  protected void onDestroy(){h.removeCallbacksAndMessages(null);db.close();super.onDestroy();}
 
-        TextView title = new TextView(this);
-        title.setText("Deep Tally Routine Test v4");
-        title.setTextSize(28);
-        title.setTextColor(Color.BLACK);
-        title.setGravity(Gravity.CENTER);
-        root.addView(title, params(0, dp(20)));
+  private void shell(){
+    root=new FrameLayout(this);root.setBackgroundColor(Color.rgb(247,248,249));
+    LinearLayout col=new LinearLayout(this);col.setOrientation(LinearLayout.VERTICAL);
+    content=new FrameLayout(this);col.addView(content,new LinearLayout.LayoutParams(-1,0,1));
+    nav=new LinearLayout(this);nav.setOrientation(LinearLayout.HORIZONTAL);nav.setBackgroundColor(Color.WHITE);
+    String[] n={"Today","Week","History","我的自傳"};
+    for(int i=0;i<4;i++){final int x=i;TextView v=Ui.text(this,n[i],13,Color.GRAY,false);v.setGravity(Gravity.CENTER);v.setOnClickListener(z->{if(editingBio&&x!=3)unsaved(()->show(x));else show(x);});nav.addView(v,new LinearLayout.LayoutParams(0,Ui.dp(this,58),1));}
+    col.addView(nav);root.addView(col,new FrameLayout.LayoutParams(-1,-1));
+    undo=Ui.text(this,"Session saved · UNDO",15,Color.WHITE,true);undo.setGravity(Gravity.CENTER);undo.setBackground(Ui.bg(this,Color.rgb(32,42,46),18));undo.setVisibility(View.GONE);undo.setOnClickListener(v->undoStop());
+    FrameLayout.LayoutParams u=new FrameLayout.LayoutParams(-1,Ui.dp(this,50),Gravity.BOTTOM);u.setMargins(Ui.dp(this,18),0,Ui.dp(this,18),Ui.dp(this,68));root.addView(undo,u);setContentView(root);
+  }
 
-        TextView intro = new TextView(this);
-        intro.setText(
-            "這版測試「靜音 + 自動消失」的 Routine 觸發通知。\n\n" +
-            "START_DEEP_WORK → 開啟深度工作模式\n" +
-            "STOP_DEEP_WORK → Ask Bixby 關閉深度工作模式\n\n" +
-            "通知本身設定為無聲、無震動，約 3 秒後自動移除。"
-        );
-        intro.setTextSize(17);
-        intro.setTextColor(Color.DKGRAY);
-        intro.setLineSpacing(0,1.2f);
-        root.addView(intro, params(0, dp(28)));
+  private void show(int x){tab=x;editingBio=false;h.removeCallbacks(tick);timer=null;content.removeAllViews();for(int i=0;i<4;i++){TextView v=(TextView)nav.getChildAt(i);v.setTextColor(i==x?Color.rgb(27,105,84):Color.rgb(110,118,122));v.setTypeface(i==x?android.graphics.Typeface.DEFAULT_BOLD:android.graphics.Typeface.DEFAULT);}if(x==0)today();else if(x==1)week();else if(x==2)history();else bio();}
+  private ScrollView page(LinearLayout[] out){ScrollView s=Ui.scroll(this);LinearLayout q=Ui.page(this);s.addView(q);out[0]=q;return s;}
 
-        Button start = new Button(this);
-        start.setText("START TEST");
-        start.setTextSize(18);
-        start.setMinHeight(dp(60));
-        start.setOnClickListener(v -> {
-            if (ensureNotificationPermission()) {
-                sendTrigger(START_ID, "START_DEEP_WORK", "Deep Tally start trigger");
-            }
-        });
-        root.addView(start, params(0, dp(14)));
+  private void today(){
+    LinearLayout[] o=new LinearLayout[1];ScrollView s=page(o);LinearLayout q=o[0];
+    LinearLayout top=new LinearLayout(this);top.setGravity(Gravity.CENTER_VERTICAL);TextView name=Ui.text(this,"Deep Tally",24,Color.rgb(27,32,35),true);top.addView(name,new LinearLayout.LayoutParams(0,-2,1));TextView set=Ui.text(this,"⚙",25,Color.DKGRAY,false);set.setPadding(Ui.dp(this,12),0,Ui.dp(this,8),0);set.setOnClickListener(v->settings());top.addView(set);q.addView(top);
+    Ui.space(q,this,16);q.addView(Ui.text(this,"Today",18,Color.rgb(101,110,115),false));
+    LocalDate d=LocalDate.now();List<Session> xs=db.between(TimeUtils.start(d),TimeUtils.start(d.plusDays(1)));long total=TimeUtils.total(xs);q.addView(Ui.text(this,TimeUtils.natural(total),31,Color.rgb(25,31,34),true));Ui.space(q,this,20);
+    timer=new CircleTimerView(this);long st=p.getLong(KSTART,0);timer.setState(st>0,st>0?System.currentTimeMillis()-st:0);timer.setOnClickListener(v->{if(p.getLong(KSTART,0)>0)stop();else start();});
+    LinearLayout hold=new LinearLayout(this);hold.setGravity(Gravity.CENTER);hold.addView(timer,new LinearLayout.LayoutParams(Ui.dp(this,276),Ui.dp(this,276)));q.addView(hold);
+    if(st>0){TextView x=Ui.text(this,"Completed today · "+TimeUtils.natural(total),13,Color.GRAY,false);x.setGravity(Gravity.CENTER);q.addView(x);h.post(tick);}
+    Ui.space(q,this,28);q.addView(Ui.text(this,"TODAY'S SESSIONS",13,Color.GRAY,true));Ui.space(q,this,6);
+    if(xs.isEmpty())q.addView(Ui.text(this,"No completed sessions yet.",15,Color.GRAY,false));else for(Session z:xs)q.addView(sessionRow(z));
+    content.addView(s);
+  }
 
-        Button stop = new Button(this);
-        stop.setText("STOP TEST");
-        stop.setTextSize(18);
-        stop.setMinHeight(dp(60));
-        stop.setOnClickListener(v -> {
-            if (ensureNotificationPermission()) {
-                sendTrigger(STOP_ID, "STOP_DEEP_WORK", "Deep Tally stop trigger");
-            }
-        });
-        root.addView(stop, params(0, dp(22)));
+  private void start(){long now=System.currentTimeMillis();p.edit().putLong(KSTART,now).apply();if(Notifier.allowed(this))Notifier.trigger(this,2001,"START_DEEP_WORK");else{Notifier.request(this);Toast.makeText(this,"請允許通知，Samsung 深度工作模式才能自動啟動。",Toast.LENGTH_LONG).show();}show(0);}
+  private void stop(){long st=p.getLong(KSTART,0),en=System.currentTimeMillis();if(st<=0||en<=st)return;undoId=db.add(st,en);undoStart=st;p.edit().remove(KSTART).apply();Notifier.trigger(this,2002,"STOP_DEEP_WORK");undo.setVisibility(View.VISIBLE);h.postDelayed(()->{undo.setVisibility(View.GONE);undoId=-1;undoStart=-1;},5000);show(0);}
+  private void undoStop(){if(undoId<0)return;db.delete(undoId);p.edit().putLong(KSTART,undoStart).apply();Notifier.trigger(this,2001,"START_DEEP_WORK");undo.setVisibility(View.GONE);undoId=-1;undoStart=-1;show(0);}
 
-        TextView note = new TextView(this);
-        note.setText(
-            "測試重點：\n" +
-            "1. START 是否仍能觸發深度工作 Mode。\n" +
-            "2. START 時是否不再震動。\n" +
-            "3. 通知是否約 3 秒後自動消失。\n" +
-            "4. STOP 是否仍能觸發 Bixby 關閉 Mode。"
-        );
-        note.setTextSize(16);
-        note.setTextColor(Color.DKGRAY);
-        note.setLineSpacing(0,1.2f);
-        root.addView(note, params(0,0));
+  private View sessionRow(Session s){
+    LinearLayout c=new LinearLayout(this);c.setGravity(Gravity.CENTER_VERTICAL);c.setPadding(Ui.dp(this,16),Ui.dp(this,14),Ui.dp(this,16),Ui.dp(this,14));c.setBackground(Ui.bg(this,Color.WHITE,17));c.setOnClickListener(v->editSession(s));
+    TextView a=Ui.text(this,TimeUtils.range(s),16,s.valid()?Color.rgb(38,45,49):Color.GRAY,false);c.addView(a,new LinearLayout.LayoutParams(0,-2,1));
+    TextView b=Ui.text(this,TimeUtils.compact(s.durationMs()),16,s.valid()?Color.rgb(38,45,49):Color.GRAY,true);if(!s.valid()){b.setPaintFlags(b.getPaintFlags()|Paint.STRIKE_THRU_TEXT_FLAG);c.setAlpha(.72f);}c.addView(b);
+    LinearLayout w=new LinearLayout(this);w.setPadding(0,Ui.dp(this,4),0,Ui.dp(this,4));w.addView(c,new LinearLayout.LayoutParams(-1,-2));return w;
+  }
 
-        setContentView(root);
-    }
+  private void editSession(Session s){
+    ZoneId z=ZoneId.systemDefault();ZonedDateTime a=Instant.ofEpochMilli(s.startMs).atZone(z),b=Instant.ofEpochMilli(s.endMs).atZone(z);int[] sh={a.getHour(),a.getMinute()},eh={b.getHour(),b.getMinute()};
+    LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(Ui.dp(this,20),0,Ui.dp(this,20),0);Button sb=new Button(this),eb=new Button(this);
+    Runnable labels=()->{sb.setText(String.format(Locale.US,"Start   %02d:%02d",sh[0],sh[1]));eb.setText(String.format(Locale.US,"End     %02d:%02d",eh[0],eh[1]));};labels.run();
+    sb.setOnClickListener(v->new TimePickerDialog(this,(w,h,m)->{sh[0]=h;sh[1]=m;labels.run();},sh[0],sh[1],true).show());
+    eb.setOnClickListener(v->new TimePickerDialog(this,(w,h,m)->{eh[0]=h;eh[1]=m;labels.run();},eh[0],eh[1],true).show());box.addView(sb);box.addView(eb);
+    AlertDialog d=new AlertDialog.Builder(this).setTitle("Edit session").setView(box).setPositiveButton("Save",null).setNeutralButton("Delete",null).setNegativeButton("Cancel",null).create();
+    d.setOnShowListener(x->{d.getButton(-1).setOnClickListener(v->{LocalDate day=TimeUtils.date(s.startMs);ZonedDateTime ns=day.atTime(sh[0],sh[1]).atZone(z),ne=day.atTime(eh[0],eh[1]).atZone(z);if(!ne.isAfter(ns))ne=ne.plusDays(1);db.update(s.id,ns.toInstant().toEpochMilli(),ne.toInstant().toEpochMilli());d.dismiss();show(tab);});d.getButton(-3).setTextColor(Color.rgb(180,50,50));d.getButton(-3).setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Delete session?").setPositiveButton("Delete",(y,w)->{db.delete(s.id);d.dismiss();show(tab);}).setNegativeButton("Cancel",null).show());});d.show();
+  }
 
-    private boolean ensureNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= 33 &&
-            ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-                != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(
-                this,
-                new String[]{Manifest.permission.POST_NOTIFICATIONS},
-                7
-            );
-            return false;
-        }
-        return true;
-    }
+  private void week(){
+    LinearLayout[] o=new LinearLayout[1];ScrollView s=page(o);LinearLayout q=o[0];q.addView(Ui.text(this,"This week",26,Color.rgb(25,31,34),true));
+    LocalDate today=LocalDate.now(),m=TimeUtils.monday(today);q.addView(Ui.text(this,TimeUtils.week(m),15,Color.GRAY,false));
+    long[] totals=new long[7];@SuppressWarnings("unchecked") List<Session>[] days=new List[7];long sum=0;for(int i=0;i<7;i++){LocalDate d=m.plusDays(i);days[i]=db.between(TimeUtils.start(d),TimeUtils.start(d.plusDays(1)));totals[i]=TimeUtils.total(days[i]);sum+=totals[i];}
+    Ui.space(q,this,12);q.addView(Ui.text(this,TimeUtils.natural(sum),32,Color.rgb(25,31,34),true));long goal=p.getInt(KGOAL,360)*60000L;q.addView(Ui.text(this,"Goal · "+TimeUtils.natural(goal),14,Color.GRAY,false));
+    ProgressBar pb=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);pb.setMax(1000);pb.setProgress(goal==0?0:(int)Math.min(1000,sum*1000/goal));LinearLayout.LayoutParams pl=new LinearLayout.LayoutParams(-1,Ui.dp(this,8));pl.setMargins(0,Ui.dp(this,8),0,Ui.dp(this,14));q.addView(pb,pl);
+    int ti=Math.max(0,Math.min(6,(int)ChronoUnit.DAYS.between(m,today)));WeekChartView chart=new WeekChartView(this);chart.set(totals,ti);q.addView(chart,new LinearLayout.LayoutParams(-1,Ui.dp(this,280)));LinearLayout det=new LinearLayout(this);det.setOrientation(LinearLayout.VERTICAL);q.addView(det);int[] sel={ti};
+    Runnable draw=()->{det.removeAllViews();LocalDate d=m.plusDays(sel[0]);det.addView(Ui.text(this,TimeUtils.day(d),19,Color.rgb(34,41,45),true));det.addView(Ui.text(this,TimeUtils.natural(totals[sel[0]]),14,Color.GRAY,false));Ui.space(det,this,8);if(days[sel[0]].isEmpty())det.addView(Ui.text(this,"No sessions.",15,Color.GRAY,false));else for(Session x:days[sel[0]])det.addView(sessionRow(x));};draw.run();chart.listener(i->{sel[0]=i;draw.run();});content.addView(s);
+  }
 
-    private void createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                CHANNEL_ID,
-                "Deep Tally routine triggers (silent)",
-                NotificationManager.IMPORTANCE_LOW
-            );
-            channel.setDescription("Silent trigger notifications for Samsung Modes & Routines");
-            channel.setSound(null, null);
-            channel.enableVibration(false);
-            channel.enableLights(false);
-            channel.setShowBadge(false);
+  private void history(){
+    LinearLayout[] o=new LinearLayout[1];ScrollView s=page(o);LinearLayout q=o[0];q.addView(Ui.text(this,"History",26,Color.rgb(25,31,34),true));q.addView(Ui.text(this,"Only sessions ≥ 30:00 count toward totals.",14,Color.GRAY,false));Ui.space(q,this,16);
+    List<Session> all=db.all();if(all.isEmpty()){q.addView(Ui.text(this,"No sessions yet.",16,Color.GRAY,false));content.addView(s);return;}
+    LinkedHashMap<LocalDate,List<Session>> g=new LinkedHashMap<>();for(Session x:all)g.computeIfAbsent(TimeUtils.date(x.startMs),k->new ArrayList<>()).add(x);
+    for(Map.Entry<LocalDate,List<Session>> e:g.entrySet()){LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(Ui.dp(this,16),Ui.dp(this,12),Ui.dp(this,16),Ui.dp(this,12));c.setBackground(Ui.bg(this,Color.WHITE,18));LinearLayout hd=new LinearLayout(this);TextView dt=Ui.text(this,TimeUtils.hist(e.getKey()),16,Color.DKGRAY,true);hd.addView(dt,new LinearLayout.LayoutParams(0,-2,1));hd.addView(Ui.text(this,TimeUtils.natural(TimeUtils.total(e.getValue())),15,Color.rgb(61,106,92),true));c.addView(hd);LinearLayout details=new LinearLayout(this);details.setOrientation(LinearLayout.VERTICAL);details.setVisibility(View.GONE);for(Session x:e.getValue())details.addView(sessionRow(x));c.addView(details);hd.setOnClickListener(v->details.setVisibility(details.getVisibility()==View.VISIBLE?View.GONE:View.VISIBLE));LinearLayout wrap=new LinearLayout(this);wrap.setPadding(0,0,0,Ui.dp(this,10));wrap.addView(c,new LinearLayout.LayoutParams(-1,-2));q.addView(wrap);}
+    content.addView(s);
+  }
 
-            NotificationManager nm =
-                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-            nm.createNotificationChannel(channel);
-        }
-    }
+  private void bio(){
+    LinearLayout[] o=new LinearLayout[1];ScrollView s=page(o);LinearLayout q=o[0];LinearLayout hd=new LinearLayout(this);TextView t=Ui.text(this,"我的自傳",26,Color.rgb(25,31,34),true);hd.addView(t,new LinearLayout.LayoutParams(0,-2,1));TextView ed=Ui.text(this,"Edit",16,Color.rgb(27,105,84),true);ed.setOnClickListener(v->bioEdit());hd.addView(ed);q.addView(hd);Ui.space(q,this,18);q.addView(bioCard("我想要的人生",p.getString(KBIO1,""),"用過去式寫下你想完成的成就、克服的阻礙，以及最後成為怎樣的人。"));Ui.space(q,this,16);q.addView(bioCard("我不想走向的人生",p.getString(KBIO2,""),"寫下如果長期放棄專注、重要事情持續被擱置，你不希望生活逐漸變成什麼樣子。"));Ui.space(q,this,20);long up=p.getLong(KUP,0);q.addView(Ui.text(this,up==0?"Not saved yet":"Last updated · "+TimeUtils.hist(TimeUtils.date(up)),13,Color.GRAY,false));content.addView(s);
+  }
 
-    private void sendTrigger(int id, String title, String text) {
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle(title)
-            .setContentText(text)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setSilent(true)
-            .setAutoCancel(true)
-            .setOnlyAlertOnce(true)
-            .setTimeoutAfter(TRIGGER_TIMEOUT_MS)
-            .setOngoing(false);
+  private View bioCard(String title,String body,String hint){LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(Ui.dp(this,18),Ui.dp(this,18),Ui.dp(this,18),Ui.dp(this,18));c.setBackground(Ui.bg(this,Color.WHITE,20));c.addView(Ui.text(this,title,19,Color.DKGRAY,true));Ui.space(c,this,8);boolean empty=body.trim().isEmpty();TextView b=Ui.text(this,empty?hint:body,16,empty?Color.GRAY:Color.rgb(56,63,67),false);b.setLineSpacing(0,1.35f);c.addView(b);return c;}
 
-        NotificationManagerCompat.from(this).notify(id, builder.build());
-    }
+  private void bioEdit(){
+    editingBio=true;content.removeAllViews();LinearLayout[] o=new LinearLayout[1];ScrollView s=page(o);LinearLayout q=o[0];LinearLayout hd=new LinearLayout(this);TextView ca=Ui.text(this,"Cancel",16,Color.GRAY,true);ca.setOnClickListener(v->cancelBio());hd.addView(ca);TextView tt=Ui.text(this,"編輯我的自傳",22,Color.DKGRAY,true);tt.setGravity(Gravity.CENTER);hd.addView(tt,new LinearLayout.LayoutParams(0,-2,1));TextView sv=Ui.text(this,"Save",16,Color.rgb(27,105,84),true);sv.setOnClickListener(v->saveBio());hd.addView(sv);q.addView(hd);
+    String f1=p.getString(KBIO1,""),f2=p.getString(KBIO2,"");b1=edit(p.getString(KD1,f1),"例如：我完成了……我克服了……我成為了一個……");b2=edit(p.getString(KD2,f2),"如果我持續讓注意力被日常瑣事切碎……幾年後我的生活可能會……");Ui.space(q,this,18);q.addView(Ui.text(this,"我想要的人生",18,Color.DKGRAY,true));q.addView(b1,new LinearLayout.LayoutParams(-1,Ui.dp(this,230)));Ui.space(q,this,18);q.addView(Ui.text(this,"我不想走向的人生",18,Color.DKGRAY,true));q.addView(b2,new LinearLayout.LayoutParams(-1,Ui.dp(this,230)));Ui.space(q,this,10);q.addView(Ui.text(this,"草稿會自動暫存；只有按 Save 才會更新正式版本。",13,Color.GRAY,false));
+    b1.addTextChangedListener(new android.text.TextWatcher(){public void beforeTextChanged(CharSequence s,int a,int b,int c){}public void onTextChanged(CharSequence s,int a,int b,int c){p.edit().putString(KD1,s.toString()).apply();}public void afterTextChanged(android.text.Editable e){}});b2.addTextChangedListener(new android.text.TextWatcher(){public void beforeTextChanged(CharSequence s,int a,int b,int c){}public void onTextChanged(CharSequence s,int a,int b,int c){p.edit().putString(KD2,s.toString()).apply();}public void afterTextChanged(android.text.Editable e){}});
+    content.addView(s);
+  }
+  private EditText edit(String v,String hint){EditText e=new EditText(this);e.setText(v);e.setHint(hint);e.setTextSize(16);e.setGravity(Gravity.TOP);e.setPadding(Ui.dp(this,15),Ui.dp(this,15),Ui.dp(this,15),Ui.dp(this,15));e.setBackground(Ui.bg(this,Color.WHITE,18));return e;}
+  private void saveBio(){String x=b1.getText().toString(),y=b2.getText().toString();p.edit().putString(KBIO1,x).putString(KBIO2,y).putString(KD1,x).putString(KD2,y).putLong(KUP,System.currentTimeMillis()).apply();editingBio=false;Ui.hideKeyboard(this);show(3);}
+  private void cancelBio(){p.edit().putString(KD1,p.getString(KBIO1,"")).putString(KD2,p.getString(KBIO2,"")).apply();editingBio=false;Ui.hideKeyboard(this);show(3);}
+  private void unsaved(Runnable after){new AlertDialog.Builder(this).setTitle("尚未儲存修改").setMessage("要先儲存這次修改嗎？").setPositiveButton("儲存",(d,w)->{saveBio();after.run();}).setNegativeButton("放棄",(d,w)->{cancelBio();after.run();}).setNeutralButton("取消",null).show();}
 
-    private LinearLayout.LayoutParams params(int top, int bottom) {
-        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        );
-        p.topMargin = top;
-        p.bottomMargin = bottom;
-        return p;
-    }
-
-    private int dp(int value) {
-        return Math.round(value * getResources().getDisplayMetrics().density);
-    }
+  private void settings(){
+    int g=p.getInt(KGOAL,360);LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER);NumberPicker h=new NumberPicker(this),m=new NumberPicker(this);h.setMinValue(0);h.setMaxValue(40);h.setValue(g/60);m.setMinValue(0);m.setMaxValue(11);String[] lab=new String[12];for(int i=0;i<12;i++)lab[i]=""+(i*5);m.setDisplayedValues(lab);m.setValue(Math.min(11,Math.round((g%60)/5f)));row.addView(h);row.addView(m);new AlertDialog.Builder(this).setTitle("Weekly deep-work goal").setMessage("Hours + minutes").setView(row).setPositiveButton("Save",(d,w)->{p.edit().putInt(KGOAL,h.getValue()*60+m.getValue()*5).apply();if(tab==1)show(1);}).setNegativeButton("Cancel",null).show();
+  }
 }
