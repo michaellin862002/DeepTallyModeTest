@@ -4,8 +4,12 @@ import android.app.*;
 import android.content.*;
 import android.graphics.*;
 import android.os.*;
+import android.net.*;
 import android.view.*;
 import android.widget.*;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import org.json.*;
 import java.time.*;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -14,6 +18,9 @@ public class MainActivity extends Activity {
   private static final String PREF="deep_tally", KSTART="timer_start", KGOAL="goal_min",
     KBIO1="bio1",KBIO2="bio2",KD1="draft1",KD2="draft2",KUP="bio_updated";
   private static final long MIN_RECORD_MS=10L*60L*1000L, UNDO_NOT_SAVED=-2L;
+  private static final int REQ_EXPORT_BACKUP=801, REQ_IMPORT_BACKUP=802;
+  private static final String BACKUP_FORMAT="deep-tally-backup";
+  private static final int BACKUP_VERSION=1;
   public static final String ACTION_DEEP_WORK_START="com.deeptally.DEEP_WORK_START";
   public static final String ACTION_DEEP_WORK_END="com.deeptally.DEEP_WORK_END";
   private SharedPreferences p; private SessionDb db; private FrameLayout content,root; private LinearLayout nav;
@@ -136,6 +143,128 @@ public class MainActivity extends Activity {
   private void unsaved(Runnable after){new AlertDialog.Builder(this).setTitle("尚未儲存修改").setMessage("要先儲存這次修改嗎？").setPositiveButton("儲存",(d,w)->{saveBio();after.run();}).setNegativeButton("放棄",(d,w)->{cancelBio();after.run();}).setNeutralButton("取消",null).show();}
 
   private void settings(){
+    String[] items={"Weekly deep-work goal","匯出備份","還原備份"};
+    new AlertDialog.Builder(this).setTitle("Settings").setItems(items,(d,which)->{
+      if(which==0)weeklyGoalDialog();
+      else if(which==1)startBackupExport();
+      else startBackupImport();
+    }).show();
+  }
+
+  private void weeklyGoalDialog(){
     int g=p.getInt(KGOAL,360);LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER);NumberPicker h=new NumberPicker(this),m=new NumberPicker(this);h.setMinValue(0);h.setMaxValue(40);h.setValue(g/60);m.setMinValue(0);m.setMaxValue(11);String[] lab=new String[12];for(int i=0;i<12;i++)lab[i]=""+(i*5);m.setDisplayedValues(lab);m.setValue(Math.min(11,Math.round((g%60)/5f)));row.addView(h);row.addView(m);new AlertDialog.Builder(this).setTitle("Weekly deep-work goal").setMessage("Hours + minutes").setView(row).setPositiveButton("Save",(d,w)->{p.edit().putInt(KGOAL,h.getValue()*60+m.getValue()*5).apply();if(tab==1)show(1);}).setNegativeButton("Cancel",null).show();
+  }
+
+  private boolean ensureIdleForDataAction(){
+    if(p.getLong(KSTART,0)>0){
+      new AlertDialog.Builder(this).setTitle("目前正在計時").setMessage("請先結束這次深度工作，再進行備份或還原。").setPositiveButton("OK",null).show();
+      return false;
+    }
+    return true;
+  }
+
+  private void startBackupExport(){
+    if(!ensureIdleForDataAction())return;
+    Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);
+    i.addCategory(Intent.CATEGORY_OPENABLE);
+    i.setType("application/json");
+    i.putExtra(Intent.EXTRA_TITLE,"DeepTally-backup-"+LocalDate.now()+".json");
+    startActivityForResult(i,REQ_EXPORT_BACKUP);
+  }
+
+  private void startBackupImport(){
+    if(!ensureIdleForDataAction())return;
+    Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);
+    i.addCategory(Intent.CATEGORY_OPENABLE);
+    i.setType("application/json");
+    startActivityForResult(i,REQ_IMPORT_BACKUP);
+  }
+
+  protected void onActivityResult(int requestCode,int resultCode,Intent data){
+    super.onActivityResult(requestCode,resultCode,data);
+    if(resultCode!=RESULT_OK||data==null||data.getData()==null)return;
+    Uri uri=data.getData();
+    if(requestCode==REQ_EXPORT_BACKUP){
+      try(OutputStream out=getContentResolver().openOutputStream(uri,"wt");Writer w=new OutputStreamWriter(out,StandardCharsets.UTF_8)){
+        w.write(buildBackupJson().toString(2));
+        Toast.makeText(this,"備份完成",Toast.LENGTH_SHORT).show();
+      }catch(Exception e){
+        new AlertDialog.Builder(this).setTitle("備份失敗").setMessage(e.getMessage()==null?"無法寫入備份檔。":e.getMessage()).setPositiveButton("OK",null).show();
+      }
+    }else if(requestCode==REQ_IMPORT_BACKUP){
+      try(InputStream in=getContentResolver().openInputStream(uri);BufferedReader r=new BufferedReader(new InputStreamReader(in,StandardCharsets.UTF_8))){
+        StringBuilder b=new StringBuilder();String line;while((line=r.readLine())!=null)b.append(line).append('\n');
+        JSONObject root=new JSONObject(b.toString());
+        validateBackup(root);
+        JSONArray sessions=root.getJSONArray("sessions");
+        new AlertDialog.Builder(this).setTitle("還原備份？")
+          .setMessage("這會以備份內容取代目前的深度工作紀錄與設定。\n\n備份內共有 "+sessions.length()+" 筆 session。")
+          .setPositiveButton("還原",(d,w)->applyBackup(root))
+          .setNegativeButton("取消",null).show();
+      }catch(Exception e){
+        new AlertDialog.Builder(this).setTitle("無法讀取備份").setMessage(e.getMessage()==null?"檔案格式不正確或已損壞。":e.getMessage()).setPositiveButton("OK",null).show();
+      }
+    }
+  }
+
+  private JSONObject buildBackupJson() throws JSONException{
+    JSONObject root=new JSONObject();
+    root.put("format",BACKUP_FORMAT);
+    root.put("backup_version",BACKUP_VERSION);
+    root.put("app_version","1.0-beta5");
+    root.put("created_at",System.currentTimeMillis());
+
+    JSONObject prefs=new JSONObject();
+    prefs.put(KGOAL,p.getInt(KGOAL,360));
+    prefs.put(KBIO1,p.getString(KBIO1,""));
+    prefs.put(KBIO2,p.getString(KBIO2,""));
+    prefs.put(KD1,p.getString(KD1,p.getString(KBIO1,"")));
+    prefs.put(KD2,p.getString(KD2,p.getString(KBIO2,"")));
+    prefs.put(KUP,p.getLong(KUP,0));
+    root.put("preferences",prefs);
+
+    JSONArray sessions=new JSONArray();
+    for(Session s:db.allStored()){
+      JSONObject x=new JSONObject();
+      x.put("start_ms",s.startMs);
+      x.put("end_ms",s.endMs);
+      sessions.put(x);
+    }
+    root.put("sessions",sessions);
+    return root;
+  }
+
+  private void validateBackup(JSONObject root) throws JSONException{
+    if(!BACKUP_FORMAT.equals(root.optString("format")))throw new JSONException("這不是 Deep Tally 備份檔。");
+    if(root.optInt("backup_version",-1)!=BACKUP_VERSION)throw new JSONException("不支援的備份版本。");
+    if(!root.has("preferences")||!root.has("sessions"))throw new JSONException("備份內容不完整。");
+  }
+
+  private void applyBackup(JSONObject root){
+    try{
+      validateBackup(root);
+      JSONObject prefs=root.getJSONObject("preferences");
+      JSONArray arr=root.getJSONArray("sessions");
+      ArrayList<Session> restored=new ArrayList<>();
+      for(int i=0;i<arr.length();i++){
+        JSONObject x=arr.getJSONObject(i);
+        long s=x.getLong("start_ms"),e=x.getLong("end_ms");
+        if(s<=0||e<=s||e-s<MIN_RECORD_MS)throw new JSONException("第 "+(i+1)+" 筆 session 資料無效。");
+        restored.add(new Session(0,s,e));
+      }
+      db.replaceAll(restored);
+      p.edit().clear()
+        .putInt(KGOAL,prefs.optInt(KGOAL,360))
+        .putString(KBIO1,prefs.optString(KBIO1,""))
+        .putString(KBIO2,prefs.optString(KBIO2,""))
+        .putString(KD1,prefs.optString(KD1,prefs.optString(KBIO1,"")))
+        .putString(KD2,prefs.optString(KD2,prefs.optString(KBIO2,"")))
+        .putLong(KUP,prefs.optLong(KUP,0))
+        .apply();
+      Toast.makeText(this,"還原完成 · "+restored.size()+" 筆 session",Toast.LENGTH_LONG).show();
+      show(tab);
+    }catch(Exception e){
+      new AlertDialog.Builder(this).setTitle("還原失敗").setMessage(e.getMessage()==null?"無法套用備份。":e.getMessage()).setPositiveButton("OK",null).show();
+    }
   }
 }
