@@ -3,9 +3,9 @@
 Minimal Android deep-work tally. **Plan elsewhere. Tally here.**
 
 ## Core
-- One large START/STOP circle.
+- One large START/STOP circle with light haptic press feedback.
 - Wall-clock timer survives backgrounding/process death.
-- Sessions count only at >= 30:00; shorter attempts are kept but struck through.
+- Sessions < 10:00 are discarded. Sessions 10:00–29:59 are kept but struck through. Sessions >= 30:00 count toward totals.
 - Week bars + weekly goal.
 - History by date.
 - 我的自傳 with edit/save and autosaved drafts.
