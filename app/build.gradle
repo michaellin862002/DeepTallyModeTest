@@ -1,4 +1,37 @@
 plugins { id 'com.android.application' }
-android { namespace 'com.deeptally.modetest'; compileSdk 35
-  defaultConfig { applicationId 'com.deeptally.modetest'; minSdk 26; targetSdk 34; versionCode 13; versionName '1.0-beta4' }
+
+def releaseKsPath = System.getenv("DEEP_TALLY_KEYSTORE_PATH")
+def releaseKsPass = System.getenv("DEEP_TALLY_KEYSTORE_PASSWORD")
+
+android {
+  namespace 'com.deeptally.modetest'
+  compileSdk 35
+
+  defaultConfig {
+    applicationId 'com.deeptally.modetest'
+    minSdk 26
+    targetSdk 34
+    versionCode 14
+    versionName '1.0-beta5'
+  }
+
+  signingConfigs {
+    release {
+      if (releaseKsPath != null && releaseKsPass != null) {
+        storeFile file(releaseKsPath)
+        storePassword releaseKsPass
+        keyAlias 'deeptally'
+        keyPassword releaseKsPass
+      }
+    }
+  }
+
+  buildTypes {
+    release {
+      minifyEnabled false
+      if (releaseKsPath != null && releaseKsPass != null) {
+        signingConfig signingConfigs.release
+      }
+    }
+  }
 }
