@@ -3,17 +3,54 @@ on:
   workflow_dispatch:
   push:
     branches: [ "main" ]
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v5
-        with: { distribution: temurin, java-version: '17' }
+        with:
+          distribution: temurin
+          java-version: '17'
+
       - run: yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --licenses >/dev/null || true
       - run: /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
       - uses: gradle/actions/setup-gradle@v4
-        with: { gradle-version: '8.9' }
-      - run: gradle assembleDebug
+        with:
+          gradle-version: '8.9'
+
+      - name: Compile debug build
+        run: gradle assembleDebug
+
+      - name: Build permanently signed release when signing secrets are configured
+        id: release
+        env:
+          KEYSTORE_B64: ${{ secrets.DEEP_TALLY_KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.DEEP_TALLY_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ] || [ -z "$KEYSTORE_PASSWORD" ]; then
+            echo "Signing secrets are not configured; skipping release APK."
+            echo "built=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/deeptally-release.jks"
+          DEEP_TALLY_KEYSTORE_PATH="$RUNNER_TEMP/deeptally-release.jks" \
+          DEEP_TALLY_KEYSTORE_PASSWORD="$KEYSTORE_PASSWORD" \
+          gradle assembleRelease
+          echo "built=true" >> "$GITHUB_OUTPUT"
+
       - uses: actions/upload-artifact@v4
-        with: { name: DeepTally-APK, path: app/build/outputs/apk/debug/app-debug.apk, if-no-files-found: error }
+        with:
+          name: DeepTally-Debug-TEST-ONLY
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        if: steps.release.outputs.built == 'true'
+        with:
+          name: DeepTally-Release
+          path: app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
