@@ -3,15 +3,23 @@
 Minimal Android deep-work tally. **Plan elsewhere. Tally here.**
 
 ## Core
-- One large START/STOP circle with light haptic press feedback.
+- One large START/STOP circle with the **beta3 light click haptic** preserved.
 - Wall-clock timer survives backgrounding/process death.
 - Sessions < 10:00 are discarded. Sessions 10:00–29:59 are kept but struck through. Sessions >= 30:00 count toward totals.
 - Week bars + weekly goal.
 - History by date.
 - 我的自傳 with edit/save and autosaved drafts.
 - Local-only SQLite + SharedPreferences.
-- Samsung Routine triggers: `START_DEEP_WORK` and `STOP_DEEP_WORK`, silent and auto-expiring.
 
-Keep the two Samsung routines already created:
-1. START_DEEP_WORK -> 開啟模式 -> 深度工作
-2. STOP_DEEP_WORK -> 詢問 Bixby -> 關閉深度工作模式
+## v1.0-beta4
+This is the canonical beta4 and is based directly on **v1.0-beta3**.
+
+The only automation change is that Deep Tally sends Android broadcast intents for MacroDroid:
+
+- START: `com.deeptally.DEEP_WORK_START`
+- STOP: `com.deeptally.DEEP_WORK_END`
+- UNDO after stopping: sends START again
+
+The Samsung Mode ID is intentionally not stored in Deep Tally. MacroDroid remains responsible for device-specific Samsung Mode control.
+
+The older experimental strong-haptic beta4 is retired; beta4 keeps beta3's light haptic behavior.

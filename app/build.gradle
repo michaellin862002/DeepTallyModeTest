@@ -1,5 +1,4 @@
 plugins { id 'com.android.application' }
 android { namespace 'com.deeptally.modetest'; compileSdk 35
-  defaultConfig { applicationId 'com.deeptally.modetest'; minSdk 26; targetSdk 34; versionCode 12; versionName '1.0-beta3' }
+  defaultConfig { applicationId 'com.deeptally.modetest'; minSdk 26; targetSdk 34; versionCode 13; versionName '1.0-beta4' }
 }
-dependencies { implementation 'androidx.core:core:1.15.0' }

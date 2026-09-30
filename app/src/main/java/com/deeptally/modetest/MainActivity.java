@@ -14,6 +14,8 @@ public class MainActivity extends Activity {
   private static final String PREF="deep_tally", KSTART="timer_start", KGOAL="goal_min",
     KBIO1="bio1",KBIO2="bio2",KD1="draft1",KD2="draft2",KUP="bio_updated";
   private static final long MIN_RECORD_MS=10L*60L*1000L, UNDO_NOT_SAVED=-2L;
+  public static final String ACTION_DEEP_WORK_START="com.deeptally.DEEP_WORK_START";
+  public static final String ACTION_DEEP_WORK_END="com.deeptally.DEEP_WORK_END";
   private SharedPreferences p; private SessionDb db; private FrameLayout content,root; private LinearLayout nav;
   private int tab=0; private CircleTimerView timer; private final Handler h=new Handler(Looper.getMainLooper());
   private boolean editingBio=false; private EditText b1,b2; private TextView undo;
@@ -21,7 +23,7 @@ public class MainActivity extends Activity {
 
   private final Runnable tick=new Runnable(){public void run(){long s=p.getLong(KSTART,0);if(s>0&&timer!=null){timer.setState(true,System.currentTimeMillis()-s);h.postDelayed(this,1000);}}};
 
-  public void onCreate(Bundle b){super.onCreate(b);p=getSharedPreferences(PREF,MODE_PRIVATE);db=new SessionDb(this);if(!p.contains(KGOAL))p.edit().putInt(KGOAL,360).apply();Notifier.init(this);Notifier.request(this);shell();show(0);}
+  public void onCreate(Bundle b){super.onCreate(b);p=getSharedPreferences(PREF,MODE_PRIVATE);db=new SessionDb(this);if(!p.contains(KGOAL))p.edit().putInt(KGOAL,360).apply();shell();show(0);}
   protected void onDestroy(){h.removeCallbacksAndMessages(null);db.close();super.onDestroy();}
 
   private void shell(){
@@ -67,9 +69,19 @@ public class MainActivity extends Activity {
     }catch(Throwable ignored){}
   }
 
-  private void start(){long now=System.currentTimeMillis();p.edit().putLong(KSTART,now).apply();if(Notifier.allowed(this))Notifier.trigger(this,2001,"START_DEEP_WORK");else{Notifier.request(this);Toast.makeText(this,"請允許通知，Samsung 深度工作模式才能自動啟動。",Toast.LENGTH_LONG).show();}show(0);}
-  private void stop(){long st=p.getLong(KSTART,0),en=System.currentTimeMillis();if(st<=0||en<=st)return;long dur=en-st;undoStart=st;if(dur>=MIN_RECORD_MS){undoId=db.add(st,en);undo.setText("Session saved · UNDO");}else{undoId=UNDO_NOT_SAVED;undo.setText("Under 10 mins · not saved · UNDO");}p.edit().remove(KSTART).apply();Notifier.trigger(this,2002,"STOP_DEEP_WORK");undo.setVisibility(View.VISIBLE);h.postDelayed(()->{undo.setVisibility(View.GONE);undoId=-1;undoStart=-1;},5000);show(0);}
-  private void undoStop(){if(undoId==-1)return;if(undoId>=0)db.delete(undoId);p.edit().putLong(KSTART,undoStart).apply();Notifier.trigger(this,2001,"START_DEEP_WORK");undo.setVisibility(View.GONE);undoId=-1;undoStart=-1;show(0);}
+  private void sendDeepWorkSignal(String action){
+    try{
+      Intent i=new Intent(action);
+      i.addFlags(Intent.FLAG_INCLUDE_STOPPED_PACKAGES);
+      i.putExtra("source","Deep Tally");
+      i.putExtra("timestamp",System.currentTimeMillis());
+      sendBroadcast(i);
+    }catch(Throwable ignored){}
+  }
+
+  private void start(){long now=System.currentTimeMillis();p.edit().putLong(KSTART,now).apply();sendDeepWorkSignal(ACTION_DEEP_WORK_START);show(0);}
+  private void stop(){long st=p.getLong(KSTART,0),en=System.currentTimeMillis();if(st<=0||en<=st)return;long dur=en-st;undoStart=st;if(dur>=MIN_RECORD_MS){undoId=db.add(st,en);undo.setText("Session saved · UNDO");}else{undoId=UNDO_NOT_SAVED;undo.setText("Under 10 mins · not saved · UNDO");}p.edit().remove(KSTART).apply();sendDeepWorkSignal(ACTION_DEEP_WORK_END);undo.setVisibility(View.VISIBLE);h.postDelayed(()->{undo.setVisibility(View.GONE);undoId=-1;undoStart=-1;},5000);show(0);}
+  private void undoStop(){if(undoId==-1)return;if(undoId>=0)db.delete(undoId);p.edit().putLong(KSTART,undoStart).apply();sendDeepWorkSignal(ACTION_DEEP_WORK_START);undo.setVisibility(View.GONE);undoId=-1;undoStart=-1;show(0);}
 
   private View sessionRow(Session s){
     LinearLayout c=new LinearLayout(this);c.setGravity(Gravity.CENTER_VERTICAL);c.setPadding(Ui.dp(this,16),Ui.dp(this,14),Ui.dp(this,16),Ui.dp(this,14));c.setBackground(Ui.bg(this,Color.WHITE,17));c.setOnClickListener(v->editSession(s));
