@@ -44,12 +44,27 @@ public class MainActivity extends Activity {
     LinearLayout top=new LinearLayout(this);top.setGravity(Gravity.CENTER_VERTICAL);TextView name=Ui.text(this,"Deep Tally",24,Color.rgb(27,32,35),true);top.addView(name,new LinearLayout.LayoutParams(0,-2,1));TextView set=Ui.text(this,"⚙",25,Color.DKGRAY,false);set.setPadding(Ui.dp(this,12),0,Ui.dp(this,8),0);set.setOnClickListener(v->settings());top.addView(set);q.addView(top);
     Ui.space(q,this,16);q.addView(Ui.text(this,"Today",18,Color.rgb(101,110,115),false));
     LocalDate d=LocalDate.now();List<Session> xs=db.between(TimeUtils.start(d),TimeUtils.start(d.plusDays(1)));long total=TimeUtils.total(xs);q.addView(Ui.text(this,TimeUtils.natural(total),31,Color.rgb(25,31,34),true));Ui.space(q,this,20);
-    timer=new CircleTimerView(this);long st=p.getLong(KSTART,0);timer.setState(st>0,st>0?System.currentTimeMillis()-st:0);timer.setOnClickListener(v->{v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);if(p.getLong(KSTART,0)>0)stop();else start();});
+    timer=new CircleTimerView(this);long st=p.getLong(KSTART,0);timer.setState(st>0,st>0?System.currentTimeMillis()-st:0);timer.setOnClickListener(v->{hapticClick();if(p.getLong(KSTART,0)>0)stop();else start();});
     LinearLayout hold=new LinearLayout(this);hold.setGravity(Gravity.CENTER);hold.addView(timer,new LinearLayout.LayoutParams(Ui.dp(this,276),Ui.dp(this,276)));q.addView(hold);
     if(st>0){TextView x=Ui.text(this,"Completed today · "+TimeUtils.natural(total),13,Color.GRAY,false);x.setGravity(Gravity.CENTER);q.addView(x);h.post(tick);}
     Ui.space(q,this,28);q.addView(Ui.text(this,"TODAY'S SESSIONS",13,Color.GRAY,true));Ui.space(q,this,6);
     if(xs.isEmpty())q.addView(Ui.text(this,"No completed sessions yet.",15,Color.GRAY,false));else for(Session z:xs)q.addView(sessionRow(z));
     content.addView(s);
+  }
+
+  private void hapticClick(){
+    try{
+      if(Build.VERSION.SDK_INT>=31){
+        VibratorManager vm=(VibratorManager)getSystemService(Context.VIBRATOR_MANAGER_SERVICE);
+        if(vm!=null){Vibrator vib=vm.getDefaultVibrator();if(vib!=null&&vib.hasVibrator())vib.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK));}
+      }else{
+        Vibrator vib=(Vibrator)getSystemService(Context.VIBRATOR_SERVICE);
+        if(vib!=null&&vib.hasVibrator()){
+          if(Build.VERSION.SDK_INT>=29)vib.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK));
+          else if(Build.VERSION.SDK_INT>=26)vib.vibrate(VibrationEffect.createOneShot(18,VibrationEffect.DEFAULT_AMPLITUDE));
+        }
+      }
+    }catch(Throwable ignored){}
   }
 
   private void start(){long now=System.currentTimeMillis();p.edit().putLong(KSTART,now).apply();if(Notifier.allowed(this))Notifier.trigger(this,2001,"START_DEEP_WORK");else{Notifier.request(this);Toast.makeText(this,"請允許通知，Samsung 深度工作模式才能自動啟動。",Toast.LENGTH_LONG).show();}show(0);}
