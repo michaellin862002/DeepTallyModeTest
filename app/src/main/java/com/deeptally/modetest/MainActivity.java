@@ -13,6 +13,7 @@ import java.util.*;
 public class MainActivity extends Activity {
   private static final String PREF="deep_tally", KSTART="timer_start", KGOAL="goal_min",
     KBIO1="bio1",KBIO2="bio2",KD1="draft1",KD2="draft2",KUP="bio_updated";
+  private static final long MIN_RECORD_MS=10L*60L*1000L, UNDO_NOT_SAVED=-2L;
   private SharedPreferences p; private SessionDb db; private FrameLayout content,root; private LinearLayout nav;
   private int tab=0; private CircleTimerView timer; private final Handler h=new Handler(Looper.getMainLooper());
   private boolean editingBio=false; private EditText b1,b2; private TextView undo;
@@ -43,7 +44,7 @@ public class MainActivity extends Activity {
     LinearLayout top=new LinearLayout(this);top.setGravity(Gravity.CENTER_VERTICAL);TextView name=Ui.text(this,"Deep Tally",24,Color.rgb(27,32,35),true);top.addView(name,new LinearLayout.LayoutParams(0,-2,1));TextView set=Ui.text(this,"⚙",25,Color.DKGRAY,false);set.setPadding(Ui.dp(this,12),0,Ui.dp(this,8),0);set.setOnClickListener(v->settings());top.addView(set);q.addView(top);
     Ui.space(q,this,16);q.addView(Ui.text(this,"Today",18,Color.rgb(101,110,115),false));
     LocalDate d=LocalDate.now();List<Session> xs=db.between(TimeUtils.start(d),TimeUtils.start(d.plusDays(1)));long total=TimeUtils.total(xs);q.addView(Ui.text(this,TimeUtils.natural(total),31,Color.rgb(25,31,34),true));Ui.space(q,this,20);
-    timer=new CircleTimerView(this);long st=p.getLong(KSTART,0);timer.setState(st>0,st>0?System.currentTimeMillis()-st:0);timer.setOnClickListener(v->{if(p.getLong(KSTART,0)>0)stop();else start();});
+    timer=new CircleTimerView(this);long st=p.getLong(KSTART,0);timer.setState(st>0,st>0?System.currentTimeMillis()-st:0);timer.setOnClickListener(v->{v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);if(p.getLong(KSTART,0)>0)stop();else start();});
     LinearLayout hold=new LinearLayout(this);hold.setGravity(Gravity.CENTER);hold.addView(timer,new LinearLayout.LayoutParams(Ui.dp(this,276),Ui.dp(this,276)));q.addView(hold);
     if(st>0){TextView x=Ui.text(this,"Completed today · "+TimeUtils.natural(total),13,Color.GRAY,false);x.setGravity(Gravity.CENTER);q.addView(x);h.post(tick);}
     Ui.space(q,this,28);q.addView(Ui.text(this,"TODAY'S SESSIONS",13,Color.GRAY,true));Ui.space(q,this,6);
@@ -52,8 +53,8 @@ public class MainActivity extends Activity {
   }
 
   private void start(){long now=System.currentTimeMillis();p.edit().putLong(KSTART,now).apply();if(Notifier.allowed(this))Notifier.trigger(this,2001,"START_DEEP_WORK");else{Notifier.request(this);Toast.makeText(this,"請允許通知，Samsung 深度工作模式才能自動啟動。",Toast.LENGTH_LONG).show();}show(0);}
-  private void stop(){long st=p.getLong(KSTART,0),en=System.currentTimeMillis();if(st<=0||en<=st)return;undoId=db.add(st,en);undoStart=st;p.edit().remove(KSTART).apply();Notifier.trigger(this,2002,"STOP_DEEP_WORK");undo.setVisibility(View.VISIBLE);h.postDelayed(()->{undo.setVisibility(View.GONE);undoId=-1;undoStart=-1;},5000);show(0);}
-  private void undoStop(){if(undoId<0)return;db.delete(undoId);p.edit().putLong(KSTART,undoStart).apply();Notifier.trigger(this,2001,"START_DEEP_WORK");undo.setVisibility(View.GONE);undoId=-1;undoStart=-1;show(0);}
+  private void stop(){long st=p.getLong(KSTART,0),en=System.currentTimeMillis();if(st<=0||en<=st)return;long dur=en-st;undoStart=st;if(dur>=MIN_RECORD_MS){undoId=db.add(st,en);undo.setText("Session saved · UNDO");}else{undoId=UNDO_NOT_SAVED;undo.setText("Under 10 mins · not saved · UNDO");}p.edit().remove(KSTART).apply();Notifier.trigger(this,2002,"STOP_DEEP_WORK");undo.setVisibility(View.VISIBLE);h.postDelayed(()->{undo.setVisibility(View.GONE);undoId=-1;undoStart=-1;},5000);show(0);}
+  private void undoStop(){if(undoId==-1)return;if(undoId>=0)db.delete(undoId);p.edit().putLong(KSTART,undoStart).apply();Notifier.trigger(this,2001,"START_DEEP_WORK");undo.setVisibility(View.GONE);undoId=-1;undoStart=-1;show(0);}
 
   private View sessionRow(Session s){
     LinearLayout c=new LinearLayout(this);c.setGravity(Gravity.CENTER_VERTICAL);c.setPadding(Ui.dp(this,16),Ui.dp(this,14),Ui.dp(this,16),Ui.dp(this,14));c.setBackground(Ui.bg(this,Color.WHITE,17));c.setOnClickListener(v->editSession(s));
@@ -69,7 +70,7 @@ public class MainActivity extends Activity {
     sb.setOnClickListener(v->new TimePickerDialog(this,(w,h,m)->{sh[0]=h;sh[1]=m;labels.run();},sh[0],sh[1],true).show());
     eb.setOnClickListener(v->new TimePickerDialog(this,(w,h,m)->{eh[0]=h;eh[1]=m;labels.run();},eh[0],eh[1],true).show());box.addView(sb);box.addView(eb);
     AlertDialog d=new AlertDialog.Builder(this).setTitle("Edit session").setView(box).setPositiveButton("Save",null).setNeutralButton("Delete",null).setNegativeButton("Cancel",null).create();
-    d.setOnShowListener(x->{d.getButton(-1).setOnClickListener(v->{LocalDate day=TimeUtils.date(s.startMs);ZonedDateTime ns=day.atTime(sh[0],sh[1]).atZone(z),ne=day.atTime(eh[0],eh[1]).atZone(z);if(!ne.isAfter(ns))ne=ne.plusDays(1);db.update(s.id,ns.toInstant().toEpochMilli(),ne.toInstant().toEpochMilli());d.dismiss();show(tab);});d.getButton(-3).setTextColor(Color.rgb(180,50,50));d.getButton(-3).setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Delete session?").setPositiveButton("Delete",(y,w)->{db.delete(s.id);d.dismiss();show(tab);}).setNegativeButton("Cancel",null).show());});d.show();
+    d.setOnShowListener(x->{d.getButton(-1).setOnClickListener(v->{LocalDate day=TimeUtils.date(s.startMs);ZonedDateTime ns=day.atTime(sh[0],sh[1]).atZone(z),ne=day.atTime(eh[0],eh[1]).atZone(z);if(!ne.isAfter(ns))ne=ne.plusDays(1);long nsm=ns.toInstant().toEpochMilli(),nem=ne.toInstant().toEpochMilli();if(nem-nsm<MIN_RECORD_MS)db.delete(s.id);else db.update(s.id,nsm,nem);d.dismiss();show(tab);});d.getButton(-3).setTextColor(Color.rgb(180,50,50));d.getButton(-3).setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Delete session?").setPositiveButton("Delete",(y,w)->{db.delete(s.id);d.dismiss();show(tab);}).setNegativeButton("Cancel",null).show());});d.show();
   }
 
   private void week(){
@@ -83,7 +84,7 @@ public class MainActivity extends Activity {
   }
 
   private void history(){
-    LinearLayout[] o=new LinearLayout[1];ScrollView s=page(o);LinearLayout q=o[0];q.addView(Ui.text(this,"History",26,Color.rgb(25,31,34),true));q.addView(Ui.text(this,"Only sessions ≥ 30:00 count toward totals.",14,Color.GRAY,false));Ui.space(q,this,16);
+    LinearLayout[] o=new LinearLayout[1];ScrollView s=page(o);LinearLayout q=o[0];q.addView(Ui.text(this,"History",26,Color.rgb(25,31,34),true));q.addView(Ui.text(this,"Sessions < 10:00 are not saved. Only sessions ≥ 30:00 count toward totals.",14,Color.GRAY,false));Ui.space(q,this,16);
     List<Session> all=db.all();if(all.isEmpty()){q.addView(Ui.text(this,"No sessions yet.",16,Color.GRAY,false));content.addView(s);return;}
     LinkedHashMap<LocalDate,List<Session>> g=new LinkedHashMap<>();for(Session x:all)g.computeIfAbsent(TimeUtils.date(x.startMs),k->new ArrayList<>()).add(x);
     for(Map.Entry<LocalDate,List<Session>> e:g.entrySet()){LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(Ui.dp(this,16),Ui.dp(this,12),Ui.dp(this,16),Ui.dp(this,12));c.setBackground(Ui.bg(this,Color.WHITE,18));LinearLayout hd=new LinearLayout(this);TextView dt=Ui.text(this,TimeUtils.hist(e.getKey()),16,Color.DKGRAY,true);hd.addView(dt,new LinearLayout.LayoutParams(0,-2,1));hd.addView(Ui.text(this,TimeUtils.natural(TimeUtils.total(e.getValue())),15,Color.rgb(61,106,92),true));c.addView(hd);LinearLayout details=new LinearLayout(this);details.setOrientation(LinearLayout.VERTICAL);details.setVisibility(View.GONE);for(Session x:e.getValue())details.addView(sessionRow(x));c.addView(details);hd.setOnClickListener(v->details.setVisibility(details.getVisibility()==View.VISIBLE?View.GONE:View.VISIBLE));LinearLayout wrap=new LinearLayout(this);wrap.setPadding(0,0,0,Ui.dp(this,10));wrap.addView(c,new LinearLayout.LayoutParams(-1,-2));q.addView(wrap);}
