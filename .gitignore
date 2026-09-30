@@ -3,3 +3,6 @@ local.properties
 .idea/
 build/
 app/build/
+*.jks
+*.keystore
+*.p12
