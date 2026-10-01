@@ -142,12 +142,21 @@ public class MainActivity extends Activity {
   private void cancelBio(){p.edit().putString(KD1,p.getString(KBIO1,"")).putString(KD2,p.getString(KBIO2,"")).apply();editingBio=false;Ui.hideKeyboard(this);show(3);}
   private void unsaved(Runnable after){new AlertDialog.Builder(this).setTitle("尚未儲存修改").setMessage("要先儲存這次修改嗎？").setPositiveButton("儲存",(d,w)->{saveBio();after.run();}).setNegativeButton("放棄",(d,w)->{cancelBio();after.run();}).setNeutralButton("取消",null).show();}
 
+  private String appVersion(){
+    try{
+      String v=getPackageManager().getPackageInfo(getPackageName(),0).versionName;
+      return v==null?"":v;
+    }catch(Exception e){return "";}
+  }
+
   private void settings(){
     String[] items={"Weekly deep-work goal","匯出備份","還原備份"};
-    new AlertDialog.Builder(this).setTitle("Settings").setItems(items,(d,which)->{
+    String v=appVersion();
+    String title=v.isEmpty()?"Settings":"Settings · v"+v;
+    new AlertDialog.Builder(this).setTitle(title).setItems(items,(d,which)->{
       if(which==0)weeklyGoalDialog();
       else if(which==1)startBackupExport();
-      else startBackupImport();
+      else if(which==2)startBackupImport();
     }).show();
   }
 
