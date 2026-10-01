@@ -48,6 +48,16 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
+      - name: Package source snapshot
+        run: git archive --format=zip --output=DeepTally-source.zip HEAD
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DeepTally-Source
+          path: DeepTally-source.zip
+          if-no-files-found: error
+
+
       - uses: actions/upload-artifact@v4
         if: steps.release.outputs.built == 'true'
         with:
