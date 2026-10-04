@@ -34,3 +34,14 @@ GitHub Actions always compiles a debug APK for CI verification. A permanently si
 - `DEEP_TALLY_KEYSTORE_PASSWORD`
 
 The key alias is fixed to `deeptally`. Keep the private keystore and password outside the repository.
+
+
+## v1.0-beta8
+- Replaces History with a Month analytics tab.
+- Week and Month periods can be selected by year.
+- Horizontal swipe moves to the previous/next week or month; pull down at the top returns to the current period.
+- Current periods remain clearly labeled This week / This month.
+- Month bars use complete Monday–Sunday weeks, including adjacent-month days when needed.
+- Month total still counts only dates inside the selected calendar month.
+- Month drill-down: week → day → session.
+- Duration formatting below top totals is standardized to HH:MM.

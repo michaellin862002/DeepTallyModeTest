@@ -11,7 +11,7 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import org.json.*;
 import java.time.*;
-import java.time.temporal.ChronoUnit;
+import java.time.temporal.*;
 import java.util.*;
 
 public class MainActivity extends Activity {
@@ -27,6 +27,10 @@ public class MainActivity extends Activity {
   private int tab=0; private CircleTimerView timer; private final Handler h=new Handler(Looper.getMainLooper());
   private boolean editingBio=false; private EditText b1,b2; private TextView undo;
   private long undoId=-1,undoStart=-1;
+  private LocalDate shownWeek=TimeUtils.monday(LocalDate.now());
+  private YearMonth shownMonth=YearMonth.now();
+  private int weekSelectedDay=-1;
+  private LocalDate monthSelectedWeek=null;
 
   private final Runnable tick=new Runnable(){public void run(){long s=p.getLong(KSTART,0);if(s>0&&timer!=null){timer.setState(true,System.currentTimeMillis()-s);h.postDelayed(this,1000);}}};
 
@@ -38,15 +42,16 @@ public class MainActivity extends Activity {
     LinearLayout col=new LinearLayout(this);col.setOrientation(LinearLayout.VERTICAL);
     content=new FrameLayout(this);col.addView(content,new LinearLayout.LayoutParams(-1,0,1));
     nav=new LinearLayout(this);nav.setOrientation(LinearLayout.HORIZONTAL);nav.setBackgroundColor(Color.WHITE);
-    String[] n={"Today","Week","History","我的自傳"};
+    String[] n={"Today","Week","Month","我的自傳"};
     for(int i=0;i<4;i++){final int x=i;TextView v=Ui.text(this,n[i],13,Color.GRAY,false);v.setGravity(Gravity.CENTER);v.setOnClickListener(z->{if(editingBio&&x!=3)unsaved(()->show(x));else show(x);});nav.addView(v,new LinearLayout.LayoutParams(0,Ui.dp(this,58),1));}
     col.addView(nav);root.addView(col,new FrameLayout.LayoutParams(-1,-1));
     undo=Ui.text(this,"Session saved · UNDO",15,Color.WHITE,true);undo.setGravity(Gravity.CENTER);undo.setBackground(Ui.bg(this,Color.rgb(32,42,46),18));undo.setVisibility(View.GONE);undo.setOnClickListener(v->undoStop());
     FrameLayout.LayoutParams u=new FrameLayout.LayoutParams(-1,Ui.dp(this,50),Gravity.BOTTOM);u.setMargins(Ui.dp(this,18),0,Ui.dp(this,18),Ui.dp(this,68));root.addView(undo,u);setContentView(root);
   }
 
-  private void show(int x){tab=x;editingBio=false;h.removeCallbacks(tick);timer=null;content.removeAllViews();for(int i=0;i<4;i++){TextView v=(TextView)nav.getChildAt(i);v.setTextColor(i==x?Color.rgb(27,105,84):Color.rgb(110,118,122));v.setTypeface(i==x?android.graphics.Typeface.DEFAULT_BOLD:android.graphics.Typeface.DEFAULT);}if(x==0)today();else if(x==1)week();else if(x==2)history();else bio();}
+  private void show(int x){tab=x;editingBio=false;h.removeCallbacks(tick);timer=null;content.removeAllViews();for(int i=0;i<4;i++){TextView v=(TextView)nav.getChildAt(i);v.setTextColor(i==x?Color.rgb(27,105,84):Color.rgb(110,118,122));v.setTypeface(i==x?android.graphics.Typeface.DEFAULT_BOLD:android.graphics.Typeface.DEFAULT);}if(x==0)today();else if(x==1)week();else if(x==2)month();else bio();}
   private ScrollView page(LinearLayout[] out){ScrollView s=Ui.scroll(this);LinearLayout q=Ui.page(this);s.addView(q);out[0]=q;return s;}
+  private PeriodScrollView periodPage(LinearLayout[] out){PeriodScrollView s=new PeriodScrollView(this);s.setFillViewport(true);s.setClipToPadding(false);s.setBackgroundColor(Color.rgb(247,248,249));LinearLayout q=Ui.page(this);s.addView(q);out[0]=q;return s;}
 
   private void today(){
     LinearLayout[] o=new LinearLayout[1];ScrollView s=page(o);LinearLayout q=o[0];
@@ -93,7 +98,7 @@ public class MainActivity extends Activity {
   private View sessionRow(Session s){
     LinearLayout c=new LinearLayout(this);c.setGravity(Gravity.CENTER_VERTICAL);c.setPadding(Ui.dp(this,16),Ui.dp(this,14),Ui.dp(this,16),Ui.dp(this,14));c.setBackground(Ui.bg(this,Color.WHITE,17));c.setOnClickListener(v->editSession(s));
     TextView a=Ui.text(this,TimeUtils.range(s),16,s.valid()?Color.rgb(38,45,49):Color.GRAY,false);c.addView(a,new LinearLayout.LayoutParams(0,-2,1));
-    TextView b=Ui.text(this,TimeUtils.compact(s.durationMs()),16,s.valid()?Color.rgb(38,45,49):Color.GRAY,true);if(!s.valid()){b.setPaintFlags(b.getPaintFlags()|Paint.STRIKE_THRU_TEXT_FLAG);c.setAlpha(.72f);}c.addView(b);
+    TextView b=Ui.text(this,TimeUtils.compact(s.durationMs()),16,s.valid()?Color.rgb(38,45,49):Color.GRAY,true);b.setGravity(Gravity.END);b.setTypeface(Typeface.MONOSPACE,Typeface.BOLD);if(!s.valid()){b.setPaintFlags(b.getPaintFlags()|Paint.STRIKE_THRU_TEXT_FLAG);c.setAlpha(.72f);}c.addView(b,new LinearLayout.LayoutParams(Ui.dp(this,76),-2));
     LinearLayout w=new LinearLayout(this);w.setPadding(0,Ui.dp(this,4),0,Ui.dp(this,4));w.addView(c,new LinearLayout.LayoutParams(-1,-2));return w;
   }
 
@@ -108,21 +113,152 @@ public class MainActivity extends Activity {
   }
 
   private void week(){
-    LinearLayout[] o=new LinearLayout[1];ScrollView s=page(o);LinearLayout q=o[0];q.addView(Ui.text(this,"This week",26,Color.rgb(25,31,34),true));
-    LocalDate today=LocalDate.now(),m=TimeUtils.monday(today);q.addView(Ui.text(this,TimeUtils.week(m),15,Color.GRAY,false));
-    long[] totals=new long[7];@SuppressWarnings("unchecked") List<Session>[] days=new List[7];long sum=0;for(int i=0;i<7;i++){LocalDate d=m.plusDays(i);days[i]=db.between(TimeUtils.start(d),TimeUtils.start(d.plusDays(1)));totals[i]=TimeUtils.total(days[i]);sum+=totals[i];}
-    Ui.space(q,this,12);q.addView(Ui.text(this,TimeUtils.natural(sum),32,Color.rgb(25,31,34),true));long goal=p.getInt(KGOAL,360)*60000L;q.addView(Ui.text(this,"Goal · "+TimeUtils.natural(goal),14,Color.GRAY,false));
-    ProgressBar pb=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);pb.setMax(1000);pb.setProgress(goal==0?0:(int)Math.min(1000,sum*1000/goal));LinearLayout.LayoutParams pl=new LinearLayout.LayoutParams(-1,Ui.dp(this,8));pl.setMargins(0,Ui.dp(this,8),0,Ui.dp(this,14));q.addView(pb,pl);
-    int ti=Math.max(0,Math.min(6,(int)ChronoUnit.DAYS.between(m,today)));WeekChartView chart=new WeekChartView(this);chart.set(totals,ti);q.addView(chart,new LinearLayout.LayoutParams(-1,Ui.dp(this,280)));LinearLayout det=new LinearLayout(this);det.setOrientation(LinearLayout.VERTICAL);q.addView(det);int[] sel={ti};
-    Runnable draw=()->{det.removeAllViews();LocalDate d=m.plusDays(sel[0]);det.addView(Ui.text(this,TimeUtils.day(d),19,Color.rgb(34,41,45),true));det.addView(Ui.text(this,TimeUtils.natural(totals[sel[0]]),14,Color.GRAY,false));Ui.space(det,this,8);if(days[sel[0]].isEmpty())det.addView(Ui.text(this,"No sessions.",15,Color.GRAY,false));else for(Session x:days[sel[0]])det.addView(sessionRow(x));};draw.run();chart.listener(i->{sel[0]=i;draw.run();});content.addView(s);
+    LinearLayout[] o=new LinearLayout[1];PeriodScrollView s=periodPage(o);LinearLayout q=o[0];
+    LocalDate today=LocalDate.now(),currentWeek=TimeUtils.monday(today);
+    if(shownWeek.isAfter(currentWeek))shownWeek=currentWeek;
+    final LocalDate m=shownWeek;
+    boolean isCurrent=m.equals(currentWeek);
+
+    TextView title=Ui.text(this,isCurrent?"This week  ▾":"Week "+TimeUtils.isoWeek(m)+"  ▾",26,Color.rgb(25,31,34),true);
+    title.setPadding(0,0,Ui.dp(this,8),0);title.setOnClickListener(v->showWeekPicker());q.addView(title);
+    q.addView(Ui.text(this,TimeUtils.weekWithYear(m),15,Color.GRAY,false));
+
+    long[] totals=new long[7];@SuppressWarnings("unchecked") List<Session>[] days=new List[7];long sum=0;
+    for(int i=0;i<7;i++){LocalDate d=m.plusDays(i);days[i]=db.between(TimeUtils.start(d),TimeUtils.start(d.plusDays(1)));totals[i]=TimeUtils.total(days[i]);sum+=totals[i];}
+    Ui.space(q,this,12);q.addView(Ui.text(this,TimeUtils.natural(sum),32,Color.rgb(25,31,34),true));
+    long goal=p.getInt(KGOAL,360)*60000L;q.addView(Ui.text(this,"Goal · "+TimeUtils.compact(goal),14,Color.GRAY,false));
+    ProgressBar pb=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);pb.setMax(1000);pb.setProgress(goal==0?0:(int)Math.min(1000,sum*1000/goal));
+    LinearLayout.LayoutParams pl=new LinearLayout.LayoutParams(-1,Ui.dp(this,8));pl.setMargins(0,Ui.dp(this,8),0,Ui.dp(this,14));q.addView(pb,pl);
+
+    if(weekSelectedDay<0||weekSelectedDay>6)weekSelectedDay=isCurrent?Math.max(0,Math.min(6,(int)ChronoUnit.DAYS.between(m,today))):0;
+    int[] sel={weekSelectedDay};
+    WeekChartView chart=new WeekChartView(this);chart.set(totals,sel[0]);q.addView(chart,new LinearLayout.LayoutParams(-1,Ui.dp(this,280)));
+    LinearLayout det=new LinearLayout(this);det.setOrientation(LinearLayout.VERTICAL);q.addView(det);
+    Runnable draw=()->{
+      det.removeAllViews();LocalDate d=m.plusDays(sel[0]);det.addView(summaryLine(TimeUtils.day(d),totals[sel[0]],true));Ui.space(det,this,8);
+      if(days[sel[0]].isEmpty())det.addView(Ui.text(this,"No sessions.",15,Color.GRAY,false));else for(Session x:days[sel[0]])det.addView(sessionRow(x));
+    };
+    draw.run();
+    chart.listener(i->{sel[0]=i;weekSelectedDay=i;draw.run();});
+
+    s.setPeriodGestures(
+      ()->{shownWeek=shownWeek.minusWeeks(1);weekSelectedDay=-1;show(1);},
+      ()->{LocalDate n=shownWeek.plusWeeks(1);if(!n.isAfter(currentWeek)){shownWeek=n;weekSelectedDay=-1;show(1);}},
+      ()->{shownWeek=currentWeek;weekSelectedDay=-1;show(1);}
+    );
+    content.addView(s);
   }
 
-  private void history(){
-    LinearLayout[] o=new LinearLayout[1];ScrollView s=page(o);LinearLayout q=o[0];q.addView(Ui.text(this,"History",26,Color.rgb(25,31,34),true));q.addView(Ui.text(this,"Sessions < 10:00 are not saved. Only sessions ≥ 30:00 count toward totals.",14,Color.GRAY,false));Ui.space(q,this,16);
-    List<Session> all=db.all();if(all.isEmpty()){q.addView(Ui.text(this,"No sessions yet.",16,Color.GRAY,false));content.addView(s);return;}
-    LinkedHashMap<LocalDate,List<Session>> g=new LinkedHashMap<>();for(Session x:all)g.computeIfAbsent(TimeUtils.date(x.startMs),k->new ArrayList<>()).add(x);
-    for(Map.Entry<LocalDate,List<Session>> e:g.entrySet()){LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(Ui.dp(this,16),Ui.dp(this,12),Ui.dp(this,16),Ui.dp(this,12));c.setBackground(Ui.bg(this,Color.WHITE,18));LinearLayout hd=new LinearLayout(this);TextView dt=Ui.text(this,TimeUtils.hist(e.getKey()),16,Color.DKGRAY,true);hd.addView(dt,new LinearLayout.LayoutParams(0,-2,1));hd.addView(Ui.text(this,TimeUtils.natural(TimeUtils.total(e.getValue())),15,Color.rgb(61,106,92),true));c.addView(hd);LinearLayout details=new LinearLayout(this);details.setOrientation(LinearLayout.VERTICAL);details.setVisibility(View.GONE);for(Session x:e.getValue())details.addView(sessionRow(x));c.addView(details);hd.setOnClickListener(v->details.setVisibility(details.getVisibility()==View.VISIBLE?View.GONE:View.VISIBLE));LinearLayout wrap=new LinearLayout(this);wrap.setPadding(0,0,0,Ui.dp(this,10));wrap.addView(c,new LinearLayout.LayoutParams(-1,-2));q.addView(wrap);}
+  private void month(){
+    LinearLayout[] o=new LinearLayout[1];PeriodScrollView s=periodPage(o);LinearLayout q=o[0];
+    YearMonth now=YearMonth.now();if(shownMonth.isAfter(now))shownMonth=now;final YearMonth ym=shownMonth;boolean isCurrent=ym.equals(now);
+    TextView title=Ui.text(this,isCurrent?"This month  ▾":TimeUtils.monthName(ym)+" "+ym.getYear()+"  ▾",26,Color.rgb(25,31,34),true);
+    title.setPadding(0,0,Ui.dp(this,8),0);title.setOnClickListener(v->showMonthPicker());q.addView(title);
+    if(isCurrent)q.addView(Ui.text(this,TimeUtils.monthYear(ym),15,Color.GRAY,false));
+
+    LocalDate monthStart=ym.atDay(1),monthEnd=ym.plusMonths(1).atDay(1);
+    long monthTotal=TimeUtils.total(db.between(TimeUtils.start(monthStart),TimeUtils.start(monthEnd)));
+    Ui.space(q,this,12);q.addView(Ui.text(this,TimeUtils.natural(monthTotal),32,Color.rgb(25,31,34),true));
+    q.addView(Ui.text(this,"Weekly bars · full Mon–Sun weeks",13,Color.GRAY,false));Ui.space(q,this,10);
+
+    LocalDate firstMon=TimeUtils.monday(monthStart),lastMon=TimeUtils.monday(ym.atEndOfMonth());
+    int count=(int)ChronoUnit.WEEKS.between(firstMon,lastMon)+1;
+    LocalDate[] starts=new LocalDate[count];long[] totals=new long[count];String[] labels=new String[count];
+    for(int i=0;i<count;i++){LocalDate w=firstMon.plusWeeks(i);starts[i]=w;totals[i]=TimeUtils.total(db.between(TimeUtils.start(w),TimeUtils.start(w.plusWeeks(1))));labels[i]=TimeUtils.shortWeek(w);}
+
+    if(monthSelectedWeek==null||monthSelectedWeek.isBefore(firstMon)||monthSelectedWeek.isAfter(lastMon)){
+      LocalDate cw=TimeUtils.monday(LocalDate.now());monthSelectedWeek=isCurrent?cw:firstMon;
+    }
+    int selected=(int)ChronoUnit.WEEKS.between(firstMon,monthSelectedWeek);selected=Math.max(0,Math.min(count-1,selected));monthSelectedWeek=starts[selected];
+    int[] sel={selected};
+    MonthChartView chart=new MonthChartView(this);chart.set(totals,labels,sel[0]);q.addView(chart,new LinearLayout.LayoutParams(-1,Ui.dp(this,280)));
+    q.addView(Ui.text(this,"Bars may include days from adjacent months so every bar is a complete week.",12,Color.GRAY,false));Ui.space(q,this,12);
+
+    LinearLayout det=new LinearLayout(this);det.setOrientation(LinearLayout.VERTICAL);q.addView(det);
+    Runnable draw=()->drawMonthWeekDetail(det,starts[sel[0]]);
+    draw.run();
+    chart.listener(i->{sel[0]=i;monthSelectedWeek=starts[i];draw.run();});
+
+    s.setPeriodGestures(
+      ()->{shownMonth=shownMonth.minusMonths(1);monthSelectedWeek=null;show(2);},
+      ()->{YearMonth n=shownMonth.plusMonths(1);if(!n.isAfter(now)){shownMonth=n;monthSelectedWeek=null;show(2);}},
+      ()->{shownMonth=now;monthSelectedWeek=null;show(2);}
+    );
     content.addView(s);
+  }
+
+  private View summaryLine(String label,long ms,boolean bold){
+    LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(0,Ui.dp(this,4),0,Ui.dp(this,4));
+    TextView left=Ui.text(this,label,19,Color.rgb(34,41,45),bold);row.addView(left,new LinearLayout.LayoutParams(0,-2,1));
+    TextView right=Ui.text(this,TimeUtils.compact(ms),16,Color.rgb(61,106,92),true);right.setGravity(Gravity.END);right.setTypeface(Typeface.MONOSPACE,Typeface.BOLD);
+    row.addView(right,new LinearLayout.LayoutParams(Ui.dp(this,76),-2));return row;
+  }
+
+  private void drawMonthWeekDetail(LinearLayout det,LocalDate weekStart){
+    det.removeAllViews();long weekTotal=TimeUtils.total(db.between(TimeUtils.start(weekStart),TimeUtils.start(weekStart.plusWeeks(1))));
+    det.addView(summaryLine(TimeUtils.weekWithYear(weekStart),weekTotal,true));Ui.space(det,this,8);
+    for(int i=0;i<7;i++){LocalDate d=weekStart.plusDays(i);List<Session> xs=db.between(TimeUtils.start(d),TimeUtils.start(d.plusDays(1)));det.addView(monthDayRow(d,xs));}
+  }
+
+  private View monthDayRow(LocalDate d,List<Session> xs){
+    LinearLayout wrap=new LinearLayout(this);wrap.setOrientation(LinearLayout.VERTICAL);wrap.setPadding(0,0,0,Ui.dp(this,6));
+    LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(Ui.dp(this,14),Ui.dp(this,10),Ui.dp(this,14),Ui.dp(this,10));box.setBackground(Ui.bg(this,Color.WHITE,16));
+    LinearLayout hd=new LinearLayout(this);hd.setGravity(Gravity.CENTER_VERTICAL);
+    TextView day=Ui.text(this,TimeUtils.dayShort(d),15,xs.isEmpty()?Color.GRAY:Color.rgb(45,52,56),true);hd.addView(day,new LinearLayout.LayoutParams(0,-2,1));
+    TextView total=Ui.text(this,TimeUtils.compact(TimeUtils.total(xs)),15,xs.isEmpty()?Color.GRAY:Color.rgb(61,106,92),true);total.setGravity(Gravity.END);total.setTypeface(Typeface.MONOSPACE,Typeface.BOLD);hd.addView(total,new LinearLayout.LayoutParams(Ui.dp(this,76),-2));
+    box.addView(hd);
+    LinearLayout details=new LinearLayout(this);details.setOrientation(LinearLayout.VERTICAL);details.setVisibility(View.GONE);
+    for(Session x:xs)details.addView(sessionRow(x));box.addView(details);
+    if(!xs.isEmpty())hd.setOnClickListener(v->details.setVisibility(details.getVisibility()==View.VISIBLE?View.GONE:View.VISIBLE));
+    wrap.addView(box,new LinearLayout.LayoutParams(-1,-2));return wrap;
+  }
+
+  private void showWeekPicker(){showWeekPickerYear(TimeUtils.isoWeekYear(shownWeek));}
+
+  private void showWeekPickerYear(int year){
+    LinearLayout outer=new LinearLayout(this);outer.setOrientation(LinearLayout.VERTICAL);outer.setPadding(Ui.dp(this,12),0,Ui.dp(this,12),Ui.dp(this,8));
+    LinearLayout yr=new LinearLayout(this);yr.setGravity(Gravity.CENTER_VERTICAL);
+    Button prev=new Button(this);prev.setText("‹");TextView label=Ui.text(this,String.valueOf(year),19,Color.DKGRAY,true);label.setGravity(Gravity.CENTER);Button next=new Button(this);next.setText("›");
+    yr.addView(prev,new LinearLayout.LayoutParams(Ui.dp(this,64),-2));yr.addView(label,new LinearLayout.LayoutParams(0,-2,1));yr.addView(next,new LinearLayout.LayoutParams(Ui.dp(this,64),-2));outer.addView(yr);
+    ScrollView sc=new ScrollView(this);LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);sc.addView(list);outer.addView(sc,new LinearLayout.LayoutParams(-1,Ui.dp(this,430)));
+    AlertDialog[] ref={null};LocalDate current=TimeUtils.monday(LocalDate.now());int currentYear=TimeUtils.isoWeekYear(current);
+    ArrayList<LocalDate> weeks=new ArrayList<>();LocalDate w=TimeUtils.monday(LocalDate.of(year,1,4));
+    while(TimeUtils.isoWeekYear(w)==year){if(!w.isAfter(current))weeks.add(w);w=w.plusWeeks(1);}
+    Collections.reverse(weeks);
+    for(LocalDate x:weeks){
+      String txt="Week "+TimeUtils.isoWeek(x)+"  ·  "+TimeUtils.weekWithYear(x);
+      TextView r=Ui.text(this,txt,15,Color.rgb(45,52,56),x.equals(shownWeek));r.setPadding(Ui.dp(this,14),Ui.dp(this,12),Ui.dp(this,14),Ui.dp(this,12));
+      if(x.equals(shownWeek))r.setBackground(Ui.bg(this,Color.rgb(231,241,237),12));
+      r.setOnClickListener(v->{shownWeek=x;weekSelectedDay=-1;if(ref[0]!=null)ref[0].dismiss();show(1);});list.addView(r,new LinearLayout.LayoutParams(-1,-2));
+    }
+    prev.setOnClickListener(v->{if(ref[0]!=null)ref[0].dismiss();showWeekPickerYear(year-1);});
+    next.setEnabled(year<currentYear);next.setOnClickListener(v->{if(year<currentYear){if(ref[0]!=null)ref[0].dismiss();showWeekPickerYear(year+1);}});
+    ref[0]=new AlertDialog.Builder(this).setTitle("Choose week").setView(outer).setNegativeButton("Cancel",null).create();ref[0].show();
+  }
+
+  private void showMonthPicker(){showMonthPickerYear(shownMonth.getYear());}
+
+  private void showMonthPickerYear(int year){
+    LinearLayout outer=new LinearLayout(this);outer.setOrientation(LinearLayout.VERTICAL);outer.setPadding(Ui.dp(this,12),0,Ui.dp(this,12),Ui.dp(this,8));
+    LinearLayout yr=new LinearLayout(this);yr.setGravity(Gravity.CENTER_VERTICAL);
+    Button prev=new Button(this);prev.setText("‹");TextView label=Ui.text(this,String.valueOf(year),19,Color.DKGRAY,true);label.setGravity(Gravity.CENTER);Button next=new Button(this);next.setText("›");
+    yr.addView(prev,new LinearLayout.LayoutParams(Ui.dp(this,64),-2));yr.addView(label,new LinearLayout.LayoutParams(0,-2,1));yr.addView(next,new LinearLayout.LayoutParams(Ui.dp(this,64),-2));outer.addView(yr);
+    AlertDialog[] ref={null};YearMonth now=YearMonth.now();
+    for(int r=0;r<4;r++){
+      LinearLayout row=new LinearLayout(this);row.setOrientation(LinearLayout.HORIZONTAL);
+      for(int c=0;c<3;c++){
+        int mo=r*3+c+1;YearMonth candidate=YearMonth.of(year,mo);boolean future=candidate.isAfter(now);boolean selected=candidate.equals(shownMonth);
+        TextView cell=Ui.text(this,TimeUtils.monthShort(candidate)+(selected?"  ✓":""),15,future?Color.LTGRAY:Color.rgb(45,52,56),selected);
+        cell.setGravity(Gravity.CENTER);cell.setPadding(Ui.dp(this,4),Ui.dp(this,14),Ui.dp(this,4),Ui.dp(this,14));
+        if(selected)cell.setBackground(Ui.bg(this,Color.rgb(231,241,237),12));
+        if(!future)cell.setOnClickListener(v->{shownMonth=candidate;monthSelectedWeek=null;if(ref[0]!=null)ref[0].dismiss();show(2);});
+        row.addView(cell,new LinearLayout.LayoutParams(0,-2,1));
+      }
+      outer.addView(row,new LinearLayout.LayoutParams(-1,-2));
+    }
+    prev.setOnClickListener(v->{if(ref[0]!=null)ref[0].dismiss();showMonthPickerYear(year-1);});
+    next.setEnabled(year<now.getYear());next.setOnClickListener(v->{if(year<now.getYear()){if(ref[0]!=null)ref[0].dismiss();showMonthPickerYear(year+1);}});
+    ref[0]=new AlertDialog.Builder(this).setTitle("Choose month").setView(outer).setNegativeButton("Cancel",null).create();ref[0].show();
   }
 
   private void bio(){
@@ -220,7 +356,7 @@ public class MainActivity extends Activity {
     JSONObject root=new JSONObject();
     root.put("format",BACKUP_FORMAT);
     root.put("backup_version",BACKUP_VERSION);
-    root.put("app_version","1.0-beta5");
+    root.put("app_version",appVersion());
     root.put("created_at",System.currentTimeMillis());
 
     JSONObject prefs=new JSONObject();
