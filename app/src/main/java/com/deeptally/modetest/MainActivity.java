@@ -239,19 +239,18 @@ public class MainActivity extends Activity {
 
     LocalDate currentWeek=TimeUtils.monday(LocalDate.now());
     long yearA=TimeUtils.start(LocalDate.of(historyYear,1,1)),yearB=TimeUtils.start(LocalDate.of(historyYear+1,1,1));
-    List<Session> yearSessions=db.overlapping(yearA,yearB);LocalDate firstRecordedDate=null;
+    List<Session> yearSessions=db.overlapping(yearA,yearB);LocalDate firstRecordedWeek=null;
     for(Session x:yearSessions){
       if(!x.valid())continue;
-      long clipped=Math.max(x.startMs,yearA);LocalDate d=TimeUtils.date(clipped);
-      if(firstRecordedDate==null||d.isBefore(firstRecordedDate))firstRecordedDate=d;
+      long clipped=Math.max(x.startMs,yearA);LocalDate w=TimeUtils.monday(TimeUtils.date(clipped));
+      if(firstRecordedWeek==null||w.isBefore(firstRecordedWeek))firstRecordedWeek=w;
     }
-    if(firstRecordedDate==null){
+    if(firstRecordedWeek==null){
       q.addView(Ui.text(this,"No deep-work sessions in "+historyYear+".",16,Color.GRAY,false));content.addView(s);return;
     }
 
-    YearMonth firstMonth=YearMonth.from(firstRecordedDate);
+    YearMonth firstMonth=YearMonth.from(firstRecordedWeek);
     LocalDate first=firstMonth.atDay(1).with(TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY));
-    if(TimeUtils.monday(firstRecordedDate).isBefore(first))first=TimeUtils.monday(firstRecordedDate);
     LocalDate last;
     if(historyYear==currentYear)last=currentWeek;
     else last=LocalDate.of(historyYear,12,31).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
