@@ -97,3 +97,9 @@ The key alias is fixed to `deeptally`. Keep the private keystore and password ou
 - Restores newest-first ordering for session rows while keeping boundary-aware statistics.
 - History year selector now lists only years containing counted Deep Work, plus the current year.
 - Re-audited beta14–beta16 behavior against the agreed specification.
+
+
+## v1.0-beta18
+- Highlights the current week row in History with a subtle pale green rounded background.
+- The highlight covers only the weekly data area (time, date, and bar), stopping before the month-summary column.
+- Goal line, labels, bars, and month summaries remain drawn above/alongside the highlight.
