@@ -72,3 +72,12 @@ The key alias is fixed to `deeptally`. Keep the private keystore and password ou
 - History left inset is slightly wider for breathing room.
 - The month-summary column is shifted right and the right padding is reduced.
 - Weekly bars gain more horizontal drawing space without changing the data scale.
+
+
+## v1.0-beta14
+- Adds manual session entry from Today and the selected day in Week.
+- Manual entry supports overnight sessions, blocks future/end-equal-start/under-10-minute entries, warns for 10–29-minute sessions, and prevents overlaps.
+- Editing also prevents overlapping sessions and invalid/future times.
+- Cross-midnight sessions remain one database row but are split at real day/week/month boundaries for statistics and day detail display.
+- Week and History left-side HH:MM values use bold dark green to match the chart palette.
+- History Goal marker now shows the configured HH:MM directly below Goal.

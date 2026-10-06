@@ -61,12 +61,15 @@ public class MainActivity extends Activity {
     LinearLayout[] o=new LinearLayout[1];ScrollView s=page(o);LinearLayout q=o[0];
     LinearLayout top=new LinearLayout(this);top.setGravity(Gravity.CENTER_VERTICAL);TextView name=Ui.text(this,"Deep Tally",24,Color.rgb(27,32,35),true);top.addView(name,new LinearLayout.LayoutParams(0,-2,1));TextView set=Ui.text(this,"⚙",25,Color.DKGRAY,false);set.setPadding(Ui.dp(this,12),0,Ui.dp(this,8),0);set.setOnClickListener(v->settings());top.addView(set);q.addView(top);
     Ui.space(q,this,16);q.addView(Ui.text(this,"Today",18,Color.rgb(101,110,115),false));
-    LocalDate d=LocalDate.now();List<Session> xs=db.between(TimeUtils.start(d),TimeUtils.start(d.plusDays(1)));long total=TimeUtils.total(xs);q.addView(Ui.text(this,TimeUtils.natural(total),31,Color.rgb(25,31,34),true));Ui.space(q,this,20);
+    LocalDate d=LocalDate.now();long dayA=TimeUtils.start(d),dayB=TimeUtils.start(d.plusDays(1));List<Session> xs=db.overlapping(dayA,dayB);long total=TimeUtils.totalWithin(xs,dayA,dayB);q.addView(Ui.text(this,TimeUtils.natural(total),31,Color.rgb(25,31,34),true));Ui.space(q,this,20);
     timer=new CircleTimerView(this);long st=p.getLong(KSTART,0);timer.setState(st>0,st>0?System.currentTimeMillis()-st:0);timer.setOnClickListener(v->{hapticClick();if(p.getLong(KSTART,0)>0)stop();else start();});
     LinearLayout hold=new LinearLayout(this);hold.setGravity(Gravity.CENTER);hold.addView(timer,new LinearLayout.LayoutParams(Ui.dp(this,276),Ui.dp(this,276)));q.addView(hold);
     if(st>0){TextView x=Ui.text(this,"Completed today · "+TimeUtils.natural(total),13,Color.GRAY,false);x.setGravity(Gravity.CENTER);q.addView(x);h.post(tick);}
-    Ui.space(q,this,28);q.addView(Ui.text(this,"TODAY'S SESSIONS",13,Color.GRAY,true));Ui.space(q,this,6);
-    if(xs.isEmpty())q.addView(Ui.text(this,"No completed sessions yet.",15,Color.GRAY,false));else for(Session z:xs)q.addView(sessionRow(z));
+    Ui.space(q,this,28);
+    LinearLayout sh=new LinearLayout(this);sh.setGravity(Gravity.CENTER_VERTICAL);
+    sh.addView(Ui.text(this,"TODAY'S SESSIONS",13,Color.GRAY,true),new LinearLayout.LayoutParams(0,-2,1));
+    sh.addView(addSessionButton(d),new LinearLayout.LayoutParams(Ui.dp(this,38),Ui.dp(this,38)));q.addView(sh);Ui.space(q,this,6);
+    if(xs.isEmpty())q.addView(Ui.text(this,"No completed sessions yet.",15,Color.GRAY,false));else for(Session z:xs)q.addView(sessionRow(z,dayA,dayB));
     content.addView(s);
   }
 
@@ -99,21 +102,86 @@ public class MainActivity extends Activity {
   private void stop(){long st=p.getLong(KSTART,0),en=System.currentTimeMillis();if(st<=0||en<=st)return;long dur=en-st;undoStart=st;if(dur>=MIN_RECORD_MS){undoId=db.add(st,en);undo.setText("Session saved · UNDO");}else{undoId=UNDO_NOT_SAVED;undo.setText("Under 10 mins · not saved · UNDO");}p.edit().remove(KSTART).apply();sendDeepWorkSignal(ACTION_DEEP_WORK_END);undo.setVisibility(View.VISIBLE);h.postDelayed(()->{undo.setVisibility(View.GONE);undoId=-1;undoStart=-1;},5000);show(0);}
   private void undoStop(){if(undoId==-1)return;if(undoId>=0)db.delete(undoId);p.edit().putLong(KSTART,undoStart).apply();sendDeepWorkSignal(ACTION_DEEP_WORK_START);undo.setVisibility(View.GONE);undoId=-1;undoStart=-1;show(0);}
 
-  private View sessionRow(Session s){
+  private View sessionRow(Session s){return sessionRow(s,s.startMs,s.endMs);}
+
+  private View sessionRow(Session s,long a,long b){
+    long ss=Math.max(s.startMs,a),ee=Math.min(s.endMs,b);if(ee<=ss)return new Space(this);
     LinearLayout c=new LinearLayout(this);c.setGravity(Gravity.CENTER_VERTICAL);c.setPadding(Ui.dp(this,16),Ui.dp(this,14),Ui.dp(this,16),Ui.dp(this,14));c.setBackground(Ui.bg(this,Color.WHITE,17));c.setOnClickListener(v->editSession(s));
-    TextView a=Ui.text(this,TimeUtils.range(s),16,s.valid()?Color.rgb(38,45,49):Color.GRAY,false);c.addView(a,new LinearLayout.LayoutParams(0,-2,1));
-    TextView b=Ui.text(this,TimeUtils.compact(s.durationMs()),16,s.valid()?Color.rgb(38,45,49):Color.GRAY,true);b.setGravity(Gravity.END);b.setTypeface(Typeface.MONOSPACE,Typeface.BOLD);if(!s.valid()){b.setPaintFlags(b.getPaintFlags()|Paint.STRIKE_THRU_TEXT_FLAG);c.setAlpha(.72f);}c.addView(b,new LinearLayout.LayoutParams(Ui.dp(this,76),-2));
-    LinearLayout w=new LinearLayout(this);w.setPadding(0,Ui.dp(this,4),0,Ui.dp(this,4));w.addView(c,new LinearLayout.LayoutParams(-1,-2));return w;
+    TextView left=Ui.text(this,TimeUtils.segmentRange(s,a,b),16,s.valid()?Color.rgb(38,45,49):Color.GRAY,false);c.addView(left,new LinearLayout.LayoutParams(0,-2,1));
+    TextView dur=Ui.text(this,TimeUtils.compact(ee-ss),16,s.valid()?Color.rgb(38,45,49):Color.GRAY,true);dur.setGravity(Gravity.END);dur.setTypeface(Typeface.MONOSPACE,Typeface.BOLD);
+    if(!s.valid()){dur.setPaintFlags(dur.getPaintFlags()|Paint.STRIKE_THRU_TEXT_FLAG);c.setAlpha(.72f);}
+    c.addView(dur,new LinearLayout.LayoutParams(Ui.dp(this,76),-2));
+    LinearLayout wrap=new LinearLayout(this);wrap.setPadding(0,Ui.dp(this,4),0,Ui.dp(this,4));wrap.addView(c,new LinearLayout.LayoutParams(-1,-2));return wrap;
+  }
+
+  private TextView addSessionButton(LocalDate day){
+    TextView v=Ui.text(this,"＋",22,Color.rgb(61,106,92),true);v.setGravity(Gravity.CENTER);
+    v.setBackground(Ui.bg(this,Color.rgb(234,242,239),11));v.setOnClickListener(x->addSession(day));return v;
+  }
+
+  private void addSession(LocalDate day){
+    if(p.getLong(KSTART,0)>0){
+      new AlertDialog.Builder(this).setTitle("Timer is running").setMessage("Finish the current session before adding a manual session.").setPositiveButton("OK",null).show();return;
+    }
+    if(day.isAfter(LocalDate.now())){
+      new AlertDialog.Builder(this).setTitle("Future sessions aren't allowed").setMessage("Choose today or an earlier date.").setPositiveButton("OK",null).show();return;
+    }
+
+    ZoneId z=ZoneId.systemDefault();int[] sh={9,0},eh={10,0};
+    if(day.equals(LocalDate.now())){
+      ZonedDateTime now=ZonedDateTime.now(z).withSecond(0).withNano(0),st=now.minusHours(1);
+      if(!st.toLocalDate().equals(day))st=day.atStartOfDay(z);
+      sh[0]=st.getHour();sh[1]=st.getMinute();eh[0]=now.getHour();eh[1]=now.getMinute();
+    }
+
+    LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(Ui.dp(this,20),0,Ui.dp(this,20),0);
+    TextView date=Ui.text(this,TimeUtils.fullDay(day),15,Color.GRAY,false);box.addView(date);
+    Ui.space(box,this,8);Button sb=new Button(this),eb=new Button(this);TextView duration=Ui.text(this,"",15,Color.rgb(61,106,92),true);
+    Runnable labels=()->{
+      int sm=sh[0]*60+sh[1],em=eh[0]*60+eh[1];boolean next=em<sm,equal=em==sm;long mins=equal?0:(next?em+1440-sm:em-sm);
+      sb.setText(String.format(Locale.US,"Start   %02d:%02d",sh[0],sh[1]));
+      eb.setText(String.format(Locale.US,"End     %02d:%02d%s",eh[0],eh[1],next?" (+1 day)":""));
+      duration.setText(equal?"Duration   —":"Duration   "+TimeUtils.compact(mins*60000L));
+    };labels.run();
+    sb.setOnClickListener(v->new TimePickerDialog(this,(w,h,m)->{sh[0]=h;sh[1]=m;labels.run();},sh[0],sh[1],true).show());
+    eb.setOnClickListener(v->new TimePickerDialog(this,(w,h,m)->{eh[0]=h;eh[1]=m;labels.run();},eh[0],eh[1],true).show());
+    box.addView(sb);box.addView(eb);Ui.space(box,this,8);box.addView(duration);
+
+    AlertDialog d=new AlertDialog.Builder(this).setTitle("Add session").setView(box).setPositiveButton("Add",null).setNegativeButton("Cancel",null).create();
+    d.setOnShowListener(x->d.getButton(-1).setOnClickListener(v->{
+      int sm=sh[0]*60+sh[1],em=eh[0]*60+eh[1];
+      if(sm==em){new AlertDialog.Builder(this).setTitle("Invalid time").setMessage("Start and end can't be the same.").setPositiveButton("OK",null).show();return;}
+      ZonedDateTime ns=day.atTime(sh[0],sh[1]).atZone(z),ne=day.atTime(eh[0],eh[1]).atZone(z);if(em<sm)ne=ne.plusDays(1);
+      long nsm=ns.toInstant().toEpochMilli(),nem=ne.toInstant().toEpochMilli(),dur=nem-nsm;
+      if(nem>System.currentTimeMillis()){new AlertDialog.Builder(this).setTitle("Future sessions aren't allowed").setMessage("The session must have already ended.").setPositiveButton("OK",null).show();return;}
+      if(dur<MIN_RECORD_MS){new AlertDialog.Builder(this).setTitle("Too short").setMessage("Sessions under 10 minutes are not recorded.").setPositiveButton("OK",null).show();return;}
+      if(db.overlaps(nsm,nem,-1)){new AlertDialog.Builder(this).setTitle("Overlapping session").setMessage("This time overlaps an existing session.").setPositiveButton("OK",null).show();return;}
+      Runnable save=()->{db.add(nsm,nem);d.dismiss();show(tab);};
+      if(dur<TimeUtils.THRESHOLD_MS)new AlertDialog.Builder(this).setTitle("Short session").setMessage("This session will be saved but won't count toward Deep Work totals.").setPositiveButton("Add",(a,b)->save.run()).setNegativeButton("Cancel",null).show();
+      else save.run();
+    }));d.show();
   }
 
   private void editSession(Session s){
     ZoneId z=ZoneId.systemDefault();ZonedDateTime a=Instant.ofEpochMilli(s.startMs).atZone(z),b=Instant.ofEpochMilli(s.endMs).atZone(z);int[] sh={a.getHour(),a.getMinute()},eh={b.getHour(),b.getMinute()};
     LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(Ui.dp(this,20),0,Ui.dp(this,20),0);Button sb=new Button(this),eb=new Button(this);
-    Runnable labels=()->{sb.setText(String.format(Locale.US,"Start   %02d:%02d",sh[0],sh[1]));eb.setText(String.format(Locale.US,"End     %02d:%02d",eh[0],eh[1]));};labels.run();
+    Runnable labels=()->{int sm=sh[0]*60+sh[1],em=eh[0]*60+eh[1];sb.setText(String.format(Locale.US,"Start   %02d:%02d",sh[0],sh[1]));eb.setText(String.format(Locale.US,"End     %02d:%02d%s",eh[0],eh[1],em<sm?" (+1 day)":""));};labels.run();
     sb.setOnClickListener(v->new TimePickerDialog(this,(w,h,m)->{sh[0]=h;sh[1]=m;labels.run();},sh[0],sh[1],true).show());
     eb.setOnClickListener(v->new TimePickerDialog(this,(w,h,m)->{eh[0]=h;eh[1]=m;labels.run();},eh[0],eh[1],true).show());box.addView(sb);box.addView(eb);
     AlertDialog d=new AlertDialog.Builder(this).setTitle("Edit session").setView(box).setPositiveButton("Save",null).setNeutralButton("Delete",null).setNegativeButton("Cancel",null).create();
-    d.setOnShowListener(x->{d.getButton(-1).setOnClickListener(v->{LocalDate day=TimeUtils.date(s.startMs);ZonedDateTime ns=day.atTime(sh[0],sh[1]).atZone(z),ne=day.atTime(eh[0],eh[1]).atZone(z);if(!ne.isAfter(ns))ne=ne.plusDays(1);long nsm=ns.toInstant().toEpochMilli(),nem=ne.toInstant().toEpochMilli();if(nem-nsm<MIN_RECORD_MS)db.delete(s.id);else db.update(s.id,nsm,nem);d.dismiss();show(tab);});d.getButton(-3).setTextColor(Color.rgb(180,50,50));d.getButton(-3).setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Delete session?").setPositiveButton("Delete",(y,w)->{db.delete(s.id);d.dismiss();show(tab);}).setNegativeButton("Cancel",null).show());});d.show();
+    d.setOnShowListener(x->{
+      d.getButton(-1).setOnClickListener(v->{
+        int sm=sh[0]*60+sh[1],em=eh[0]*60+eh[1];
+        if(sm==em){new AlertDialog.Builder(this).setTitle("Invalid time").setMessage("Start and end can't be the same.").setPositiveButton("OK",null).show();return;}
+        LocalDate day=TimeUtils.date(s.startMs);ZonedDateTime ns=day.atTime(sh[0],sh[1]).atZone(z),ne=day.atTime(eh[0],eh[1]).atZone(z);if(em<sm)ne=ne.plusDays(1);
+        long nsm=ns.toInstant().toEpochMilli(),nem=ne.toInstant().toEpochMilli();
+        if(nem>System.currentTimeMillis()){new AlertDialog.Builder(this).setTitle("Future sessions aren't allowed").setMessage("The session must have already ended.").setPositiveButton("OK",null).show();return;}
+        if(nem-nsm<MIN_RECORD_MS){new AlertDialog.Builder(this).setTitle("Too short").setMessage("Sessions under 10 minutes are not recorded.").setPositiveButton("OK",null).show();return;}
+        if(db.overlaps(nsm,nem,s.id)){new AlertDialog.Builder(this).setTitle("Overlapping session").setMessage("This time overlaps another session.").setPositiveButton("OK",null).show();return;}
+        db.update(s.id,nsm,nem);d.dismiss();show(tab);
+      });
+      d.getButton(-3).setTextColor(Color.rgb(180,50,50));d.getButton(-3).setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Delete session?").setPositiveButton("Delete",(y,w)->{db.delete(s.id);d.dismiss();show(tab);}).setNegativeButton("Cancel",null).show());
+    });d.show();
   }
 
   private void week(){
@@ -127,7 +195,7 @@ public class MainActivity extends Activity {
     q.addView(Ui.text(this,TimeUtils.weekWithYear(m),15,Color.GRAY,false));
 
     long[] totals=new long[7];@SuppressWarnings("unchecked") List<Session>[] days=new List[7];long sum=0;
-    for(int i=0;i<7;i++){LocalDate d=m.plusDays(i);days[i]=db.between(TimeUtils.start(d),TimeUtils.start(d.plusDays(1)));totals[i]=TimeUtils.total(days[i]);sum+=totals[i];}
+    for(int i=0;i<7;i++){LocalDate d=m.plusDays(i);long a=TimeUtils.start(d),b=TimeUtils.start(d.plusDays(1));days[i]=db.overlapping(a,b);totals[i]=TimeUtils.totalWithin(days[i],a,b);sum+=totals[i];}
 
     Ui.space(q,this,12);
     long goal=p.getInt(KGOAL,360)*60000L;
@@ -147,8 +215,8 @@ public class MainActivity extends Activity {
 
     LinearLayout det=new LinearLayout(this);det.setOrientation(LinearLayout.VERTICAL);q.addView(det);
     Runnable draw=()->{
-      det.removeAllViews();LocalDate d=m.plusDays(sel[0]);det.addView(summaryLine(TimeUtils.day(d),totals[sel[0]],true));Ui.space(det,this,8);
-      if(days[sel[0]].isEmpty())det.addView(Ui.text(this,"No sessions.",15,Color.GRAY,false));else for(Session x:days[sel[0]])det.addView(sessionRow(x));
+      det.removeAllViews();LocalDate d=m.plusDays(sel[0]);long a=TimeUtils.start(d),b=TimeUtils.start(d.plusDays(1));det.addView(daySummaryLine(d,totals[sel[0]]));Ui.space(det,this,8);
+      if(days[sel[0]].isEmpty())det.addView(Ui.text(this,"No sessions.",15,Color.GRAY,false));else for(Session x:days[sel[0]])det.addView(sessionRow(x,a,b));
     };
     draw.run();
     chart.listener(i->{sel[0]=i;weekSelectedDay=i;draw.run();});
@@ -169,32 +237,33 @@ public class MainActivity extends Activity {
     title.setPadding(0,0,Ui.dp(this,8),0);title.setOnClickListener(v->showHistoryYearPicker());q.addView(title);
     q.addView(Ui.text(this,"Weekly totals · newest first",14,Color.GRAY,false));Ui.space(q,this,14);
 
-    List<Session> stored=db.allStored();LocalDate currentWeek=TimeUtils.monday(LocalDate.now());
-    LocalDate firstRecordedWeek=null;
-    for(Session x:stored){
+    LocalDate currentWeek=TimeUtils.monday(LocalDate.now());
+    long yearA=TimeUtils.start(LocalDate.of(historyYear,1,1)),yearB=TimeUtils.start(LocalDate.of(historyYear+1,1,1));
+    List<Session> yearSessions=db.overlapping(yearA,yearB);LocalDate firstRecordedDate=null;
+    for(Session x:yearSessions){
       if(!x.valid())continue;
-      LocalDate w=TimeUtils.monday(TimeUtils.date(x.startMs));
-      if(w.getYear()!=historyYear)continue;
-      if(firstRecordedWeek==null||w.isBefore(firstRecordedWeek))firstRecordedWeek=w;
+      long clipped=Math.max(x.startMs,yearA);LocalDate d=TimeUtils.date(clipped);
+      if(firstRecordedDate==null||d.isBefore(firstRecordedDate))firstRecordedDate=d;
     }
-    if(firstRecordedWeek==null){
+    if(firstRecordedDate==null){
       q.addView(Ui.text(this,"No deep-work sessions in "+historyYear+".",16,Color.GRAY,false));content.addView(s);return;
     }
 
-    YearMonth firstMonth=YearMonth.from(firstRecordedWeek);
+    YearMonth firstMonth=YearMonth.from(firstRecordedDate);
     LocalDate first=firstMonth.atDay(1).with(TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY));
+    if(TimeUtils.monday(firstRecordedDate).isBefore(first))first=TimeUtils.monday(firstRecordedDate);
     LocalDate last;
     if(historyYear==currentYear)last=currentWeek;
     else last=LocalDate.of(historyYear,12,31).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
 
     int count=(int)ChronoUnit.WEEKS.between(first,last)+1;
     LocalDate[] weeks=new LocalDate[count];long[] totals=new long[count];
-    for(int i=0;i<count;i++){LocalDate w=last.minusWeeks(i);weeks[i]=w;totals[i]=TimeUtils.total(db.between(TimeUtils.start(w),TimeUtils.start(w.plusWeeks(1))));}
+    for(int i=0;i<count;i++){LocalDate w=last.minusWeeks(i);long a=TimeUtils.start(w),b=TimeUtils.start(w.plusWeeks(1));totals[i]=TimeUtils.totalWithin(db.overlapping(a,b),a,b);}
 
     long[] monthTotals=new long[12];
     for(int mo=1;mo<=12;mo++){
-      YearMonth ym=YearMonth.of(historyYear,mo);
-      monthTotals[mo-1]=TimeUtils.total(db.between(TimeUtils.start(ym.atDay(1)),TimeUtils.start(ym.plusMonths(1).atDay(1))));
+      YearMonth ym=YearMonth.of(historyYear,mo);long a=TimeUtils.start(ym.atDay(1)),b=TimeUtils.start(ym.plusMonths(1).atDay(1));
+      monthTotals[mo-1]=TimeUtils.totalWithin(db.overlapping(a,b),a,b);
     }
     long goal=p.getInt(KGOAL,360)*60000L;
     HistoryTimelineView chart=new HistoryTimelineView(this);chart.set(weeks,totals,goal,monthTotals);
@@ -208,6 +277,13 @@ public class MainActivity extends Activity {
     TextView left=Ui.text(this,label,19,Color.rgb(34,41,45),bold);row.addView(left,new LinearLayout.LayoutParams(0,-2,1));
     TextView right=Ui.text(this,TimeUtils.compact(ms),16,Color.rgb(61,106,92),true);right.setGravity(Gravity.END);right.setTypeface(Typeface.MONOSPACE,Typeface.BOLD);
     row.addView(right,new LinearLayout.LayoutParams(Ui.dp(this,76),-2));return row;
+  }
+
+  private View daySummaryLine(LocalDate day,long ms){
+    LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);row.setPadding(0,Ui.dp(this,4),0,Ui.dp(this,4));
+    TextView left=Ui.text(this,TimeUtils.day(day),19,Color.rgb(34,41,45),true);row.addView(left,new LinearLayout.LayoutParams(0,-2,1));
+    LinearLayout.LayoutParams bp=new LinearLayout.LayoutParams(Ui.dp(this,36),Ui.dp(this,36));bp.setMargins(Ui.dp(this,8),0,Ui.dp(this,10),0);row.addView(addSessionButton(day),bp);
+    TextView right=Ui.text(this,TimeUtils.compact(ms),16,Color.rgb(61,106,92),true);right.setGravity(Gravity.END);right.setTypeface(Typeface.MONOSPACE,Typeface.BOLD);row.addView(right,new LinearLayout.LayoutParams(Ui.dp(this,76),-2));return row;
   }
 
   private void showWeekPicker(){showWeekPickerYear(TimeUtils.isoWeekYear(shownWeek));}
@@ -235,7 +311,7 @@ public class MainActivity extends Activity {
 
   private void showHistoryYearPicker(){
     TreeSet<Integer> years=new TreeSet<>(Collections.reverseOrder());years.add(LocalDate.now().getYear());
-    for(Session x:db.allStored())years.add(TimeUtils.monday(TimeUtils.date(x.startMs)).getYear());
+    for(Session x:db.allStored()){years.add(TimeUtils.date(x.startMs).getYear());years.add(TimeUtils.date(Math.max(x.startMs,x.endMs-1)).getYear());}
     Integer[] ys=years.toArray(new Integer[0]);String[] labels=new String[ys.length];
     for(int i=0;i<ys.length;i++)labels[i]=ys[i]==LocalDate.now().getYear()?"This year · "+ys[i]:String.valueOf(ys[i]);
     new AlertDialog.Builder(this).setTitle("Choose year").setItems(labels,(d,which)->{historyYear=ys[which];show(2);}).setNegativeButton("Cancel",null).show();
