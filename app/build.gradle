@@ -11,8 +11,8 @@ android {
     applicationId 'com.deeptally.modetest'
     minSdk 26
     targetSdk 34
-    versionCode 26
-    versionName '1.0-beta17'
+    versionCode 27
+    versionName '1.0-beta18'
   }
 
   signingConfigs {
