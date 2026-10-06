@@ -13,7 +13,7 @@ public class HistoryTimelineView extends View{
   protected void onMeasure(int w,int h){int wanted=(int)(dp(44)+weeks.length*dp(48)+dp(14));setMeasuredDimension(resolveSize((int)dp(340),w),resolveSize(wanted,h));}
   protected void onDraw(Canvas c){
     if(weeks.length==0)return;
-    float L=dp(1),top=dp(42),rowH=dp(48),timeRight=L+dp(44),dateX=L+dp(52),barStart=L+dp(114),monthCol=dp(86),barEnd=getWidth()-monthCol-dp(1);
+    float L=dp(1),top=dp(42),rowH=dp(48),timeRight=L+dp(44),dateX=L+dp(52),barStart=L+dp(122),monthCol=dp(86),barEnd=getWidth()-monthCol-dp(1);
     long max=Math.max(goal,3600000L);for(long x:totals)max=Math.max(max,x);max=(long)(max*1.12f);
     float goalX=barStart+(barEnd-barStart)*(goal/(float)Math.max(1,max));
 
