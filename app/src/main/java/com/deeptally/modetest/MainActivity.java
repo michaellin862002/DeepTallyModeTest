@@ -258,7 +258,7 @@ public class MainActivity extends Activity {
 
     int count=(int)ChronoUnit.WEEKS.between(first,last)+1;
     LocalDate[] weeks=new LocalDate[count];long[] totals=new long[count];
-    for(int i=0;i<count;i++){LocalDate w=last.minusWeeks(i);long a=TimeUtils.start(w),b=TimeUtils.start(w.plusWeeks(1));totals[i]=TimeUtils.totalWithin(db.overlapping(a,b),a,b);}
+    for(int i=0;i<count;i++){LocalDate w=last.minusWeeks(i);weeks[i]=w;long a=TimeUtils.start(w),b=TimeUtils.start(w.plusWeeks(1));totals[i]=TimeUtils.totalWithin(db.overlapping(a,b),a,b);}
 
     long[] monthTotals=new long[12];
     for(int mo=1;mo<=12;mo++){
