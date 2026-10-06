@@ -27,8 +27,10 @@ public class HistoryTimelineView extends View{
       while(groupEnd+1<weeks.length&&weeks[groupEnd+1].getMonthValue()==month&&weeks[groupEnd+1].getYear()==weeks[groupStart].getYear())groupEnd++;
       float center=top+((groupStart+groupEnd+1)/2f)*rowH;
       YearMonth ym=YearMonth.of(weeks[groupStart].getYear(),month);long mt=monthTotals[month-1];long mins=mt/60000,hours=mins/60,rem=mins%60;
-      float mx=barEnd+dp(6);p.setTextAlign(Paint.Align.LEFT);p.setTypeface(Typeface.DEFAULT_BOLD);p.setTextSize(sp(10.5f));p.setColor(Color.rgb(55,62,66));
-      c.drawText(ym.format(MON)+"  "+hours+" hrs "+rem+" mins",mx,center+dp(4),p);
+      float mx=barEnd+dp(6);p.setTextAlign(Paint.Align.LEFT);p.setTypeface(Typeface.DEFAULT_BOLD);p.setTextSize(sp(15));p.setColor(Color.rgb(55,62,66));
+      c.drawText(ym.format(MON),mx,center-dp(4),p);
+      p.setTypeface(Typeface.DEFAULT);p.setTextSize(sp(10.5f));p.setColor(Color.rgb(90,98,103));
+      c.drawText(hours+" hrs "+rem+" mins",mx,center+dp(13),p);
       if(groupEnd+1<weeks.length){float y=top+(groupEnd+1)*rowH;p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(dp(1));p.setPathEffect(new DashPathEffect(new float[]{dp(6),dp(5)},0));p.setColor(Color.rgb(190,195,198));c.drawLine(L,y,getWidth()-dp(4),y,p);p.setPathEffect(null);p.setStyle(Paint.Style.FILL);}
       groupStart=groupEnd+1;
     }
