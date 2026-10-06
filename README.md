@@ -62,3 +62,7 @@ The key alias is fixed to `deeptally`. Keep the private keystore and password ou
 - History begins at the first Monday-grouped month containing a counted deep-work week, then shows every week continuously through the current week (or year end for past years), including 00:00 weeks and completely empty later months.
 - Month summaries use a compact one-line format such as Sep 12 hrs 38 mins.
 - History uses narrower page margins and wider chart content.
+
+
+## v1.0-beta11
+- History month summaries use two lines: the month on the first line and "X hrs X mins" on the second.
