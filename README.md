@@ -45,3 +45,13 @@ The key alias is fixed to `deeptally`. Keep the private keystore and password ou
 - Month total still counts only dates inside the selected calendar month.
 - Month drill-down: week → day → session.
 - Duration formatting below top totals is standardized to HH:MM.
+
+
+## v1.0-beta9
+- Week chart redesigned as seven horizontal day rows.
+- Week day rows use aligned HH:MM, weekday, date, and bar columns; weekday/date remain visually grouped.
+- Weekly goal status is shown with an outlined/filled star next to the top total.
+- Re-entering Week from the bottom tab always returns to This week; History drill-down remains an intentional exception.
+- Month is replaced by History.
+- History shows weekly horizontal bars from newest to oldest, a weekly-goal reference line, month separators, and calendar-month totals.
+- History can filter by year; tapping a week jumps to that exact week in Week.
