@@ -81,3 +81,7 @@ The key alias is fixed to `deeptally`. Keep the private keystore and password ou
 - Cross-midnight sessions remain one database row but are split at real day/week/month boundaries for statistics and day detail display.
 - Week and History left-side HH:MM values use bold dark green to match the chart palette.
 - History Goal marker now shows the configured HH:MM directly below Goal.
+
+
+## v1.0-beta15
+- Hotfix: fixes a History crash caused by week dates not being assigned after the beta14 boundary-aware statistics refactor.
