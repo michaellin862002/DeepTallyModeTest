@@ -17,6 +17,16 @@ public class HistoryTimelineView extends View{
     long max=Math.max(goal,3600000L);for(long x:totals)max=Math.max(max,x);max=(long)(max*1.12f);
     float goalX=barStart+(barEnd-barStart)*(goal/(float)Math.max(1,max));
 
+    LocalDate currentWeek=TimeUtils.monday(LocalDate.now());
+    for(int i=0;i<weeks.length;i++){
+      if(weeks[i].equals(currentWeek)){
+        float y=top+i*rowH+dp(3);
+        p.setStyle(Paint.Style.FILL);p.setColor(Color.rgb(240,246,244));
+        c.drawRoundRect(new RectF(L,y,barEnd+dp(2),y+rowH-dp(6)),dp(11),dp(11),p);
+        break;
+      }
+    }
+
     p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(dp(1));p.setPathEffect(new DashPathEffect(new float[]{dp(5),dp(5)},0));p.setColor(Color.rgb(135,145,149));c.drawLine(goalX,dp(50),goalX,top+weeks.length*rowH,p);p.setPathEffect(null);p.setStyle(Paint.Style.FILL);
     p.setTextAlign(Paint.Align.CENTER);p.setTypeface(Typeface.DEFAULT_BOLD);p.setTextSize(sp(18));p.setColor(Color.rgb(61,106,92));c.drawText("★",goalX,dp(17),p);
     p.setTextSize(sp(9));p.setColor(Color.GRAY);c.drawText("Goal",goalX,dp(31),p);
