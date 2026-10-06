@@ -55,3 +55,10 @@ The key alias is fixed to `deeptally`. Keep the private keystore and password ou
 - Month is replaced by History.
 - History shows weekly horizontal bars from newest to oldest, a weekly-goal reference line, month separators, and calendar-month totals.
 - History can filter by year; tapping a week jumps to that exact week in Week.
+
+
+## v1.0-beta10
+- History title now shows the current year explicitly: This year · YYYY.
+- History begins at the first Monday-grouped month containing a counted deep-work week, then shows every week continuously through the current week (or year end for past years), including 00:00 weeks and completely empty later months.
+- Month summaries use a compact one-line format such as Sep 12 hrs 38 mins.
+- History uses narrower page margins and wider chart content.

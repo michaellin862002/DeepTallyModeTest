@@ -163,28 +163,39 @@ public class MainActivity extends Activity {
 
   private void history(){
     LinearLayout[] o=new LinearLayout[1];ScrollView s=page(o);LinearLayout q=o[0];
+    q.setPadding(Ui.dp(this,10),Ui.dp(this,24),Ui.dp(this,10),Ui.dp(this,34));
     int currentYear=LocalDate.now().getYear();
-    TextView title=Ui.text(this,historyYear==currentYear?"This year  ▾":historyYear+"  ▾",26,Color.rgb(25,31,34),true);
+    TextView title=Ui.text(this,historyYear==currentYear?"This year · "+currentYear+"  ▾":historyYear+"  ▾",26,Color.rgb(25,31,34),true);
     title.setPadding(0,0,Ui.dp(this,8),0);title.setOnClickListener(v->showHistoryYearPicker());q.addView(title);
     q.addView(Ui.text(this,"Weekly totals · newest first",14,Color.GRAY,false));Ui.space(q,this,14);
 
     List<Session> stored=db.allStored();LocalDate currentWeek=TimeUtils.monday(LocalDate.now());
-    LocalDate first=null,last=null;
+    LocalDate firstRecordedWeek=null;
     for(Session x:stored){
+      if(!x.valid())continue;
       LocalDate w=TimeUtils.monday(TimeUtils.date(x.startMs));
       if(w.getYear()!=historyYear)continue;
-      if(first==null||w.isBefore(first))first=w;if(last==null||w.isAfter(last))last=w;
+      if(firstRecordedWeek==null||w.isBefore(firstRecordedWeek))firstRecordedWeek=w;
     }
-    if(historyYear==currentWeek.getYear()){if(first==null)first=currentWeek;last=currentWeek;}
-    if(first==null||last==null){
-      q.addView(Ui.text(this,"No sessions in "+historyYear+".",16,Color.GRAY,false));content.addView(s);return;
+    if(firstRecordedWeek==null){
+      q.addView(Ui.text(this,"No deep-work sessions in "+historyYear+".",16,Color.GRAY,false));content.addView(s);return;
     }
+
+    YearMonth firstMonth=YearMonth.from(firstRecordedWeek);
+    LocalDate first=firstMonth.atDay(1).with(TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY));
+    LocalDate last;
+    if(historyYear==currentYear)last=currentWeek;
+    else last=LocalDate.of(historyYear,12,31).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
 
     int count=(int)ChronoUnit.WEEKS.between(first,last)+1;
     LocalDate[] weeks=new LocalDate[count];long[] totals=new long[count];
     for(int i=0;i<count;i++){LocalDate w=last.minusWeeks(i);weeks[i]=w;totals[i]=TimeUtils.total(db.between(TimeUtils.start(w),TimeUtils.start(w.plusWeeks(1))));}
+
     long[] monthTotals=new long[12];
-    for(int mo=1;mo<=12;mo++){YearMonth ym=YearMonth.of(historyYear,mo);monthTotals[mo-1]=TimeUtils.total(db.between(TimeUtils.start(ym.atDay(1)),TimeUtils.start(ym.plusMonths(1).atDay(1))));}
+    for(int mo=1;mo<=12;mo++){
+      YearMonth ym=YearMonth.of(historyYear,mo);
+      monthTotals[mo-1]=TimeUtils.total(db.between(TimeUtils.start(ym.atDay(1)),TimeUtils.start(ym.plusMonths(1).atDay(1))));
+    }
     long goal=p.getInt(KGOAL,360)*60000L;
     HistoryTimelineView chart=new HistoryTimelineView(this);chart.set(weeks,totals,goal,monthTotals);
     chart.listener(w->{shownWeek=w;weekSelectedDay=-1;show(1);});
