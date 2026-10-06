@@ -13,7 +13,7 @@ public class HistoryTimelineView extends View{
   protected void onMeasure(int w,int h){int wanted=(int)(dp(44)+weeks.length*dp(48)+dp(14));setMeasuredDimension(resolveSize((int)dp(340),w),resolveSize(wanted,h));}
   protected void onDraw(Canvas c){
     if(weeks.length==0)return;
-    float L=dp(1),top=dp(42),rowH=dp(48),timeRight=L+dp(44),dateX=L+dp(52),barStart=L+dp(114),monthCol=dp(102),barEnd=getWidth()-monthCol-dp(2);
+    float L=dp(1),top=dp(42),rowH=dp(48),timeRight=L+dp(44),dateX=L+dp(52),barStart=L+dp(114),monthCol=dp(86),barEnd=getWidth()-monthCol-dp(1);
     long max=Math.max(goal,3600000L);for(long x:totals)max=Math.max(max,x);max=(long)(max*1.12f);
     float goalX=barStart+(barEnd-barStart)*(goal/(float)Math.max(1,max));
 
@@ -44,7 +44,7 @@ public class HistoryTimelineView extends View{
   }
   public boolean onTouchEvent(MotionEvent e){
     if(e.getAction()==MotionEvent.ACTION_DOWN){downX=e.getX();downY=e.getY();return true;}
-    if(e.getAction()==MotionEvent.ACTION_UP){if(Math.abs(e.getX()-downX)<dp(12)&&Math.abs(e.getY()-downY)<dp(12)){int i=(int)((e.getY()-dp(42))/dp(48));if(i>=0&&i<weeks.length&&e.getX()<getWidth()-dp(102)){if(l!=null)l.week(weeks[i]);performClick();}}return true;}return true;
+    if(e.getAction()==MotionEvent.ACTION_UP){if(Math.abs(e.getX()-downX)<dp(12)&&Math.abs(e.getY()-downY)<dp(12)){int i=(int)((e.getY()-dp(42))/dp(48));if(i>=0&&i<weeks.length&&e.getX()<getWidth()-dp(86)){if(l!=null)l.week(weeks[i]);performClick();}}return true;}return true;
   }
   public boolean performClick(){super.performClick();return true;}
 }

@@ -66,3 +66,9 @@ The key alias is fixed to `deeptally`. Keep the private keystore and password ou
 
 ## v1.0-beta11
 - History month summaries use two lines: the month on the first line and "X hrs X mins" on the second.
+
+
+## v1.0-beta12
+- History left inset is slightly wider for breathing room.
+- The month-summary column is shifted right and the right padding is reduced.
+- Weekly bars gain more horizontal drawing space without changing the data scale.

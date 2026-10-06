@@ -163,7 +163,7 @@ public class MainActivity extends Activity {
 
   private void history(){
     LinearLayout[] o=new LinearLayout[1];ScrollView s=page(o);LinearLayout q=o[0];
-    q.setPadding(Ui.dp(this,10),Ui.dp(this,24),Ui.dp(this,10),Ui.dp(this,34));
+    q.setPadding(Ui.dp(this,14),Ui.dp(this,24),Ui.dp(this,4),Ui.dp(this,34));
     int currentYear=LocalDate.now().getYear();
     TextView title=Ui.text(this,historyYear==currentYear?"This year · "+currentYear+"  ▾":historyYear+"  ▾",26,Color.rgb(25,31,34),true);
     title.setPadding(0,0,Ui.dp(this,8),0);title.setOnClickListener(v->showHistoryYearPicker());q.addView(title);
