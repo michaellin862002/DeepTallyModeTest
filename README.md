@@ -85,3 +85,8 @@ The key alias is fixed to `deeptally`. Keep the private keystore and password ou
 
 ## v1.0-beta15
 - Hotfix: fixes a History crash caused by week dates not being assigned after the beta14 boundary-aware statistics refactor.
+
+
+## v1.0-beta16
+- History again follows the first-recorded-month rule: determine the first week that contains counted Deep Work, use that week's Monday month as the first month, and display every Monday-start week in that month even when some weeks are 00:00.
+- All later weeks continue to display without gaps.
