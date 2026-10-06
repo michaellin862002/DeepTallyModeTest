@@ -310,7 +310,7 @@ public class MainActivity extends Activity {
 
   private void showHistoryYearPicker(){
     TreeSet<Integer> years=new TreeSet<>(Collections.reverseOrder());years.add(LocalDate.now().getYear());
-    for(Session x:db.allStored()){years.add(TimeUtils.date(x.startMs).getYear());years.add(TimeUtils.date(Math.max(x.startMs,x.endMs-1)).getYear());}
+    for(Session x:db.allStored())if(x.valid()){years.add(TimeUtils.date(x.startMs).getYear());years.add(TimeUtils.date(Math.max(x.startMs,x.endMs-1)).getYear());}
     Integer[] ys=years.toArray(new Integer[0]);String[] labels=new String[ys.length];
     for(int i=0;i<ys.length;i++)labels[i]=ys[i]==LocalDate.now().getYear()?"This year · "+ys[i]:String.valueOf(ys[i]);
     new AlertDialog.Builder(this).setTitle("Choose year").setItems(labels,(d,which)->{historyYear=ys[which];show(2);}).setNegativeButton("Cancel",null).show();

@@ -90,3 +90,10 @@ The key alias is fixed to `deeptally`. Keep the private keystore and password ou
 ## v1.0-beta16
 - History again follows the first-recorded-month rule: determine the first week that contains counted Deep Work, use that week's Monday month as the first month, and display every Monday-start week in that month even when some weeks are 00:00.
 - All later weeks continue to display without gaps.
+
+
+## v1.0-beta17
+- Fixes Week chart paint-state leakage: only the left HH:MM duration is dark green/bold; weekday and date return to dark gray.
+- Restores newest-first ordering for session rows while keeping boundary-aware statistics.
+- History year selector now lists only years containing counted Deep Work, plus the current year.
+- Re-audited beta14–beta16 behavior against the agreed specification.

@@ -20,8 +20,8 @@ public class WeekChartView extends View{
       if(i==sel){p.setColor(Color.rgb(232,242,238));c.drawRoundRect(new RectF(L,top,R,top+rowH-dp(4)),dp(12),dp(12),p);}
       else if(i==today){p.setColor(Color.rgb(243,247,245));c.drawRoundRect(new RectF(L,top,R,top+rowH-dp(4)),dp(12),dp(12),p);}
       p.setTypeface(Typeface.create(Typeface.MONOSPACE,Typeface.BOLD));p.setTextSize(sp(14));p.setTextAlign(Paint.Align.RIGHT);p.setColor(Color.rgb(61,106,92));c.drawText(TimeUtils.compact(v[i]),timeRight,cy+dp(5),p);
-      p.setTypeface(Typeface.DEFAULT_BOLD);p.setTextAlign(Paint.Align.LEFT);p.setTextSize(sp(14));c.drawText(dates[i].format(WD),weekdayX,cy+dp(5),p);
-      p.setTypeface(Typeface.DEFAULT);p.setTextAlign(Paint.Align.LEFT);p.setTextSize(sp(14));c.drawText(dates[i].getMonthValue()+"/"+dates[i].getDayOfMonth(),dateX,cy+dp(5),p);
+      p.setTypeface(Typeface.DEFAULT_BOLD);p.setTextAlign(Paint.Align.LEFT);p.setTextSize(sp(14));p.setColor(Color.rgb(49,56,60));c.drawText(dates[i].format(WD),weekdayX,cy+dp(5),p);
+      p.setTypeface(Typeface.DEFAULT);p.setTextAlign(Paint.Align.LEFT);p.setTextSize(sp(14));p.setColor(Color.rgb(70,77,82));c.drawText(dates[i].getMonthValue()+"/"+dates[i].getDayOfMonth(),dateX,cy+dp(5),p);
       if(v[i]>0){float w=(barEnd-barStart)*(v[i]/(float)max);p.setColor(i==sel?Color.rgb(65,147,122):Color.rgb(158,190,180));c.drawRoundRect(new RectF(barStart,cy-dp(7),barStart+Math.max(dp(4),w),cy+dp(7)),dp(7),dp(7),p);}
       if(i<6){p.setColor(Color.rgb(232,235,236));p.setStrokeWidth(dp(.7f));c.drawLine(L,top+rowH-dp(2),R,top+rowH-dp(2),p);}
     }
