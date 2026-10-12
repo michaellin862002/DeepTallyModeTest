@@ -103,3 +103,10 @@ The key alias is fixed to `deeptally`. Keep the private keystore and password ou
 - Highlights the current week row in History with a subtle pale green rounded background.
 - The highlight covers only the weekly data area (time, date, and bar), stopping before the month-summary column.
 - Goal line, labels, bars, and month summaries remain drawn above/alongside the highlight.
+
+
+## v1.0-beta19
+- Week daily bars now use one consistent scale across all weeks in the same year instead of rescaling to each week's maximum day.
+- The scale is the year's highest counted single-day Deep Work total, rounded up to the next whole hour, with a minimum full-scale value of 4 hours.
+- The current year's scale only considers dates through today; it increases only when a new higher single-day record is reached.
+- No extra scale label is shown; exact HH:MM values remain the primary numeric reference.

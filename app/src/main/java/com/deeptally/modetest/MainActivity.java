@@ -211,7 +211,8 @@ public class MainActivity extends Activity {
     }
     int todayIndex=isCurrent?Math.max(0,Math.min(6,(int)ChronoUnit.DAYS.between(m,today))):-1;
     int[] sel={weekSelectedDay};
-    WeekChartView chart=new WeekChartView(this);chart.set(totals,m,sel[0],todayIndex);q.addView(chart,new LinearLayout.LayoutParams(-1,Ui.dp(this,344)));
+    long weekScale=weekScaleForYear(m.plusDays(3).getYear());
+    WeekChartView chart=new WeekChartView(this);chart.set(totals,m,sel[0],todayIndex,weekScale);q.addView(chart,new LinearLayout.LayoutParams(-1,Ui.dp(this,344)));
 
     LinearLayout det=new LinearLayout(this);det.setOrientation(LinearLayout.VERTICAL);q.addView(det);
     Runnable draw=()->{
@@ -227,6 +228,20 @@ public class MainActivity extends Activity {
       ()->{shownWeek=currentWeek;weekSelectedDay=-1;show(1);}
     );
     content.addView(s);
+  }
+
+  private long weekScaleForYear(int year){
+    LocalDate firstDay=LocalDate.of(year,1,1),lastDay=LocalDate.of(year,12,31),today=LocalDate.now();
+    if(year==today.getYear()&&today.isBefore(lastDay))lastDay=today;
+    long yearA=TimeUtils.start(firstDay),yearB=TimeUtils.start(lastDay.plusDays(1));
+    List<Session> xs=db.overlapping(yearA,yearB);long maxDay=0;
+    for(LocalDate d=firstDay;!d.isAfter(lastDay);d=d.plusDays(1)){
+      long a=TimeUtils.start(d),b=TimeUtils.start(d.plusDays(1));
+      long total=TimeUtils.totalWithin(xs,a,b);if(total>maxDay)maxDay=total;
+    }
+    long hour=60L*60L*1000L;
+    long rounded=maxDay<=0?0:((maxDay+hour-1)/hour)*hour;
+    return Math.max(4L*hour,rounded);
   }
 
   private void history(){

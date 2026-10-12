@@ -5,16 +5,16 @@ import java.time.*;import java.time.format.*;import java.util.*;
 public class WeekChartView extends View{
   public interface Listener{void day(int i);}
   private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);private final long[] v=new long[7];private final LocalDate[] dates=new LocalDate[7];
-  private int sel=0,today=-1;private Listener l;private float downX,downY;
+  private int sel=0,today=-1;private long scaleMax=4L*60L*60L*1000L;private Listener l;private float downX,downY;
   private static final DateTimeFormatter WD=DateTimeFormatter.ofPattern("EEE",Locale.ENGLISH);
   public WeekChartView(Context c){super(c);setClickable(true);}
-  public void set(long[] x,LocalDate weekStart,int selected,int todayIndex){for(int i=0;i<7;i++){v[i]=x[i];dates[i]=weekStart.plusDays(i);}sel=Math.max(0,Math.min(6,selected));today=todayIndex;invalidate();}
+  public void set(long[] x,LocalDate weekStart,int selected,int todayIndex,long scaleMaxMs){for(int i=0;i<7;i++){v[i]=x[i];dates[i]=weekStart.plusDays(i);}sel=Math.max(0,Math.min(6,selected));today=todayIndex;scaleMax=Math.max(1,scaleMaxMs);invalidate();}
   public void listener(Listener x){l=x;}
   private float dp(float x){return x*getResources().getDisplayMetrics().density;}private float sp(float x){return x*getResources().getDisplayMetrics().scaledDensity;}
   protected void onMeasure(int w,int h){setMeasuredDimension(resolveSize((int)dp(340),w),resolveSize((int)dp(344),h));}
   protected void onDraw(Canvas c){
     float L=dp(4),R=getWidth()-dp(4),rowH=dp(48),timeRight=L+dp(54),weekdayX=L+dp(66),dateX=L+dp(101),barStart=L+dp(148),barEnd=R-dp(4);
-    long max=3600000L;for(long x:v)max=Math.max(max,x);
+    long max=Math.max(1,scaleMax);
     for(int i=0;i<7;i++){
       float top=i*rowH+dp(2),cy=top+rowH/2f;
       if(i==sel){p.setColor(Color.rgb(232,242,238));c.drawRoundRect(new RectF(L,top,R,top+rowH-dp(4)),dp(12),dp(12),p);}
