@@ -241,7 +241,10 @@ public class MainActivity extends Activity {
     }
     long hour=60L*60L*1000L;
     long rounded=maxDay<=0?0:((maxDay+hour-1)/hour)*hour;
-    return Math.max(4L*hour,rounded);
+    long candidate=Math.max(4L*hour,rounded);
+    String key="week_scale_"+year;long stored=p.getLong(key,0);
+    if(candidate>stored){p.edit().putLong(key,candidate).apply();return candidate;}
+    return Math.max(4L*hour,stored);
   }
 
   private void history(){
