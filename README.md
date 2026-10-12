@@ -110,3 +110,11 @@ The key alias is fixed to `deeptally`. Keep the private keystore and password ou
 - The scale is the year's highest counted single-day Deep Work total, rounded up to the next whole hour, with a minimum full-scale value of 4 hours.
 - The current year's scale only considers dates through today; it increases only when a new higher single-day record is reached.
 - No extra scale label is shown; exact HH:MM values remain the primary numeric reference.
+
+
+## v1.0-beta20
+- Week daily-bar scale is recalculated from the current data whenever Week is drawn, so editing or deleting the previous highest day can lower the scale again.
+- Each year's scale remains: max(4 hours, that year's highest counted single-day Deep Work rounded up to the next whole hour).
+- A week that spans two calendar years uses the larger of those two yearly scales for all seven bars, preventing either side of the year boundary from exceeding the chart scale.
+- Week numbering and the Week picker continue to use ISO week-year rules (the Thursday/4-day rule).
+- History grouping remains Monday-based; no History scale behavior was changed in this release.

@@ -211,7 +211,7 @@ public class MainActivity extends Activity {
     }
     int todayIndex=isCurrent?Math.max(0,Math.min(6,(int)ChronoUnit.DAYS.between(m,today))):-1;
     int[] sel={weekSelectedDay};
-    long weekScale=weekScaleForYear(m.plusDays(3).getYear());
+    long weekScale=weekScaleForWeek(m);
     WeekChartView chart=new WeekChartView(this);chart.set(totals,m,sel[0],todayIndex,weekScale);q.addView(chart,new LinearLayout.LayoutParams(-1,Ui.dp(this,344)));
 
     LinearLayout det=new LinearLayout(this);det.setOrientation(LinearLayout.VERTICAL);q.addView(det);
@@ -230,6 +230,13 @@ public class MainActivity extends Activity {
     content.addView(s);
   }
 
+  private long weekScaleForWeek(LocalDate weekStart){
+    int firstYear=weekStart.getYear(),lastYear=weekStart.plusDays(6).getYear();
+    long scale=weekScaleForYear(firstYear);
+    if(lastYear!=firstYear)scale=Math.max(scale,weekScaleForYear(lastYear));
+    return scale;
+  }
+
   private long weekScaleForYear(int year){
     LocalDate firstDay=LocalDate.of(year,1,1),lastDay=LocalDate.of(year,12,31),today=LocalDate.now();
     if(year==today.getYear()&&today.isBefore(lastDay))lastDay=today;
@@ -241,10 +248,7 @@ public class MainActivity extends Activity {
     }
     long hour=60L*60L*1000L;
     long rounded=maxDay<=0?0:((maxDay+hour-1)/hour)*hour;
-    long candidate=Math.max(4L*hour,rounded);
-    String key="week_scale_"+year;long stored=p.getLong(key,0);
-    if(candidate>stored){p.edit().putLong(key,candidate).apply();return candidate;}
-    return Math.max(4L*hour,stored);
+    return Math.max(4L*hour,rounded);
   }
 
   private void history(){
