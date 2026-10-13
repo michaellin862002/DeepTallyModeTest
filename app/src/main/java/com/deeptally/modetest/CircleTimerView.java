@@ -27,15 +27,16 @@ public class CircleTimerView extends View{
     float cx=getWidth()/2f,cy=getHeight()/2f;
     float mainRadius=Math.min(getWidth(),getHeight())/2f-dp(6);
     float dx=x-cx,dy=y-cy;
+
+    // The main action is clickable only on its painted circular face.
     if(dx*dx+dy*dy>mainRadius*mainRadius)return false;
 
-    float earY=cy-dp(133);
-    float safeR=dp(58);
-    float leftX=cx-dp(94),rightX=cx+dp(94);
-    float ldx=x-leftX,ldy=y-earY;
-    if(ldx*ldx+ldy*ldy<=safeR*safeR)return false;
-    float rdx=x-rightX,rdy=y-earY;
-    if(rdx*rdx+rdy*rdy<=safeR*safeR)return false;
+    // Keep only a small safety crescent directly below the correction button.
+    // This protects near-miss taps without making the upper part of START/STOP
+    // feel unresponsive.
+    float safeX=cx,safeY=cy-mainRadius,safeR=dp(18);
+    float sx=x-safeX,sy=y-safeY;
+    if(sx*sx+sy*sy<=safeR*safeR)return false;
     return true;
   }
 

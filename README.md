@@ -160,3 +160,14 @@ The key alias is fixed to `deeptally`. Keep the private keystore and password ou
 - Keeps the beta24 enlarged auxiliary touch target and its wider near-main exclusion unchanged, so the anti-mistap protection remains stronger than the visible gap suggests.
 - Keeps the main circle's true circular hit area and the invisible safety zones beside both ear buttons unchanged.
 - No timer behavior, colors, sizes, positions, or session logic changed.
+
+
+## v1.0-beta26
+- Replaces the two auxiliary correction buttons with one centered secondary button above the main timer.
+- The secondary button is visually larger than the previous ears (about 104 dp visible diameter) and keeps the muted active green (#557A6E) with white two-line text.
+- While idle it shows Start / from… and uses the existing Start from… workflow; while timing it changes to Stop / at… and uses the existing Stop at… workflow.
+- The secondary button has a concave lower cut-out following the main timer's curvature and keeps an 8 dp visual gap.
+- Its invisible touch target is slightly larger than the visible button but is clipped away from the gap and main timer.
+- The main timer remains horizontally centered and its clickable area is strictly its circular painted face, never the surrounding square View.
+- The main timer's anti-mistap zone is reduced to a small 18 dp safety crescent directly below the secondary button so intentional taps near the top of the main circle still work normally.
+- All retrospective start/stop rules, overlap checks, broadcasts, thresholds, undo behavior, and beta3 light haptic remain unchanged.
