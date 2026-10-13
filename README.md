@@ -127,3 +127,12 @@ The key alias is fixed to `deeptally`. Keep the private keystore and password ou
 - Both controls support cross-midnight corrections through date + time pickers.
 - Active auxiliary controls use the existing pale-green / dark-green Deep Tally palette; inactive controls remain visible in a subdued gray state and do not respond.
 - Existing STOP/UNDO behavior is preserved, including restoring the running timer if an adjusted stop is undone.
+
+
+## v1.0-beta22
+- Redesigns the Today auxiliary timer controls to match the original hand-drawn “rotated Mickey ears” concept.
+- The large central START/STOP circle keeps its original size and remains the dominant control; the cluster is only shifted slightly left to make room for the two independent ear buttons.
+- Each auxiliary control is now an 88 dp near-circle with a concave cut-out whose curvature follows the main timer circle, plus a small visual gap so it reads as a separate button.
+- Active auxiliary controls use deep ink green (#3D6A5C) with white two-line text; inactive controls keep the beta21 pale-gray / gray palette.
+- Transparent cut-out areas are excluded from the auxiliary button hit target so taps on the main circle are not intercepted.
+- Start/stop correction behavior is unchanged from beta21.
