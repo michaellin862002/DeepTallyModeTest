@@ -171,3 +171,14 @@ The key alias is fixed to `deeptally`. Keep the private keystore and password ou
 - The main timer remains horizontally centered and its clickable area is strictly its circular painted face, never the surrounding square View.
 - The main timer's anti-mistap zone is reduced to a small 18 dp safety crescent directly below the secondary button so intentional taps near the top of the main circle still work normally.
 - All retrospective start/stop rules, overlap checks, broadcasts, thresholds, undo behavior, and beta3 light haptic remain unchanged.
+
+
+## v1.0-beta27
+- Refines the single centered correction button without changing any retrospective timer behavior.
+- Enlarges the underlying secondary circle from about 104 dp to about 120 dp visible diameter so the label has comfortable horizontal room.
+- Moves the secondary circle closer to the main timer and lets the main-circle curvature cut much deeper into it, producing a slimmer horizontal cap while preserving the same 8 dp visible gap.
+- Changes the correction label to one centered line: Start from… while idle and Stop at… while timing.
+- Softens the correction button one more shade to #6B8C82 while keeping white text.
+- Keeps the main timer at the beta26 position, keeps its hit area strictly circular, and keeps the small 18 dp anti-mistap safety zone unchanged.
+- The correction button retains an enlarged touch target that is clipped away from the gap and main timer.
+- All overlap checks, thresholds, broadcasts, undo behavior, backup behavior, and beta3 light haptic are unchanged.

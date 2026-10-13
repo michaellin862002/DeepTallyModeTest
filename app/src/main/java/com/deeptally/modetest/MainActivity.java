@@ -66,7 +66,7 @@ public class MainActivity extends Activity {
     FrameLayout hold=new FrameLayout(this);
     FrameLayout.LayoutParams tp=new FrameLayout.LayoutParams(Ui.dp(this,276),Ui.dp(this,276),Gravity.CENTER);timer.setTranslationY(Ui.dp(this,16));hold.addView(timer,tp);
     AuxTimerButtonView correction=auxTimerButton(running?"Stop":"Start",running?"at…":"from…",running?()->stopAtPast():()->startFromPast());
-    FrameLayout.LayoutParams cp=new FrameLayout.LayoutParams(Ui.dp(this,124),Ui.dp(this,124),Gravity.CENTER);correction.setTranslationY(-Ui.dp(this,144));hold.addView(correction,cp);
+    FrameLayout.LayoutParams cp=new FrameLayout.LayoutParams(Ui.dp(this,140),Ui.dp(this,140),Gravity.CENTER);correction.setTranslationY(-Ui.dp(this,114));hold.addView(correction,cp);
     q.addView(hold,new LinearLayout.LayoutParams(-1,Ui.dp(this,400)));
     if(st>0){TextView x=Ui.text(this,"Completed today · "+TimeUtils.natural(total),13,Color.GRAY,false);x.setGravity(Gravity.CENTER);q.addView(x);h.post(tick);}
     Ui.space(q,this,28);
