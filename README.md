@@ -153,3 +153,10 @@ The key alias is fixed to `deeptally`. Keep the private keystore and password ou
 - The main timer now accepts taps only inside its actual circular face instead of its full square View bounds.
 - Adds small invisible no-tap safety zones on the main circle beside the two ear buttons, so near-miss taps are ignored instead of accidentally starting or stopping a session.
 - Start from… / Stop at… behavior, colors, positions, and the centered 276 dp main circle remain otherwise unchanged.
+
+
+## v1.0-beta25
+- Tightens the visible gap between each auxiliary ear button and the main timer from about 10 dp to about 8 dp for a more cohesive Mickey-ear composition.
+- Keeps the beta24 enlarged auxiliary touch target and its wider near-main exclusion unchanged, so the anti-mistap protection remains stronger than the visible gap suggests.
+- Keeps the main circle's true circular hit area and the invisible safety zones beside both ear buttons unchanged.
+- No timer behavior, colors, sizes, positions, or session logic changed.

@@ -37,7 +37,7 @@ public class AuxTimerButtonView extends View {
 
     Path ear=new Path();ear.addCircle(cx,cy,visualRadius,Path.Direction.CW);
     Path visualExclusion=new Path();
-    visualExclusion.addCircle(bigCx,bigCy,dp(142),Path.Direction.CW);
+    visualExclusion.addCircle(bigCx,bigCy,dp(140),Path.Direction.CW);
     shape.set(ear);shape.op(visualExclusion,Path.Op.DIFFERENCE);
 
     Path touch=new Path();touch.addCircle(cx,cy,touchRadius,Path.Direction.CW);
