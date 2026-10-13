@@ -10,11 +10,11 @@ public class AuxTimerButtonView extends View {
   private final Path shape=new Path();
   private final Region hit=new Region();
   private final String line1,line2;
-  private final boolean upper;
+  private final boolean leftEar;
   private boolean active=false,pressedInside=false;
 
-  public AuxTimerButtonView(Context c,String first,String second,boolean isUpper){
-    super(c);line1=first;line2=second;upper=isUpper;setClickable(true);
+  public AuxTimerButtonView(Context c,String first,String second,boolean isLeftEar){
+    super(c);line1=first;line2=second;leftEar=isLeftEar;setClickable(true);
     setContentDescription(first+" "+second.replace("…",""));
   }
 
@@ -32,8 +32,8 @@ public class AuxTimerButtonView extends View {
     float cx=w/2f,cy=h/2f,r=Math.min(w,h)/2f-dp(2);
     Path ear=new Path();ear.addCircle(cx,cy,r,Path.Direction.CW);
     Path exclusion=new Path();
-    float bigCx=cx-dp(133);
-    float bigCy=cy+(upper?dp(94):-dp(94));
+    float bigCx=cx+(leftEar?dp(94):-dp(94));
+    float bigCy=cy+dp(133);
     exclusion.addCircle(bigCx,bigCy,dp(137),Path.Direction.CW);
     shape.set(ear);shape.op(exclusion,Path.Op.DIFFERENCE);
     Region clip=new Region(0,0,w,h);hit.setPath(shape,clip);
@@ -42,15 +42,15 @@ public class AuxTimerButtonView extends View {
   protected void onDraw(Canvas c){
     super.onDraw(c);
     p.setStyle(Paint.Style.FILL);
-    p.setColor(active?Color.rgb(61,106,92):Color.rgb(241,243,243));
+    p.setColor(active?Color.rgb(85,122,110):Color.rgb(241,243,243));
     c.drawPath(shape,p);
 
     p.setTextAlign(Paint.Align.CENTER);
     p.setTypeface(Typeface.create(Typeface.DEFAULT,Typeface.BOLD));
     p.setTextSize(sp(11.5f));
     p.setColor(active?Color.WHITE:Color.rgb(165,171,173));
-    float x=getWidth()/2f+dp(3);
-    float mid=getHeight()/2f;
+    float x=getWidth()/2f+(leftEar?-dp(3):dp(3));
+    float mid=getHeight()/2f-dp(3);
     c.drawText(line1,x,mid-sp(2),p);
     c.drawText(line2,x,mid+sp(12),p);
   }

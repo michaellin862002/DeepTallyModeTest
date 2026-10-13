@@ -64,12 +64,12 @@ public class MainActivity extends Activity {
     LocalDate d=LocalDate.now();long dayA=TimeUtils.start(d),dayB=TimeUtils.start(d.plusDays(1));List<Session> xs=db.overlapping(dayA,dayB);long total=TimeUtils.totalWithin(xs,dayA,dayB);q.addView(Ui.text(this,TimeUtils.natural(total),31,Color.rgb(25,31,34),true));Ui.space(q,this,20);
     timer=new CircleTimerView(this);long st=p.getLong(KSTART,0);boolean running=st>0;timer.setState(running,running?System.currentTimeMillis()-st:0);timer.setOnClickListener(v->{hapticClick();if(p.getLong(KSTART,0)>0)stop();else start();});
     FrameLayout hold=new FrameLayout(this);
-    FrameLayout.LayoutParams tp=new FrameLayout.LayoutParams(Ui.dp(this,276),Ui.dp(this,276),Gravity.CENTER);timer.setTranslationX(-Ui.dp(this,20));hold.addView(timer,tp);
+    FrameLayout.LayoutParams tp=new FrameLayout.LayoutParams(Ui.dp(this,276),Ui.dp(this,276),Gravity.CENTER);hold.addView(timer,tp);
     AuxTimerButtonView startFrom=auxTimerButton("Start","from…",true,!running,()->startFromPast());
-    FrameLayout.LayoutParams sfp=new FrameLayout.LayoutParams(Ui.dp(this,88),Ui.dp(this,88),Gravity.CENTER);startFrom.setTranslationX(Ui.dp(this,113));startFrom.setTranslationY(-Ui.dp(this,94));hold.addView(startFrom,sfp);
+    FrameLayout.LayoutParams sfp=new FrameLayout.LayoutParams(Ui.dp(this,88),Ui.dp(this,88),Gravity.CENTER);startFrom.setTranslationX(-Ui.dp(this,94));startFrom.setTranslationY(-Ui.dp(this,133));hold.addView(startFrom,sfp);
     AuxTimerButtonView stopAt=auxTimerButton("Stop","at…",false,running,()->stopAtPast());
-    FrameLayout.LayoutParams sap=new FrameLayout.LayoutParams(Ui.dp(this,88),Ui.dp(this,88),Gravity.CENTER);stopAt.setTranslationX(Ui.dp(this,113));stopAt.setTranslationY(Ui.dp(this,94));hold.addView(stopAt,sap);
-    q.addView(hold,new LinearLayout.LayoutParams(-1,Ui.dp(this,292)));
+    FrameLayout.LayoutParams sap=new FrameLayout.LayoutParams(Ui.dp(this,88),Ui.dp(this,88),Gravity.CENTER);stopAt.setTranslationX(Ui.dp(this,94));stopAt.setTranslationY(-Ui.dp(this,133));hold.addView(stopAt,sap);
+    q.addView(hold,new LinearLayout.LayoutParams(-1,Ui.dp(this,354)));
     if(st>0){TextView x=Ui.text(this,"Completed today · "+TimeUtils.natural(total),13,Color.GRAY,false);x.setGravity(Gravity.CENTER);q.addView(x);h.post(tick);}
     Ui.space(q,this,28);
     LinearLayout sh=new LinearLayout(this);sh.setGravity(Gravity.CENTER_VERTICAL);
@@ -106,8 +106,8 @@ public class MainActivity extends Activity {
 
   private interface PastTimeHandler{void chosen(long ms);}
 
-  private AuxTimerButtonView auxTimerButton(String line1,String line2,boolean upper,boolean enabled,Runnable action){
-    AuxTimerButtonView v=new AuxTimerButtonView(this,line1,line2,upper);v.setActive(enabled);
+  private AuxTimerButtonView auxTimerButton(String line1,String line2,boolean leftEar,boolean enabled,Runnable action){
+    AuxTimerButtonView v=new AuxTimerButtonView(this,line1,line2,leftEar);v.setActive(enabled);
     v.setOnClickListener(x->{if(!v.isActive())return;hapticClick();action.run();});
     return v;
   }

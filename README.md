@@ -136,3 +136,11 @@ The key alias is fixed to `deeptally`. Keep the private keystore and password ou
 - Active auxiliary controls use deep ink green (#3D6A5C) with white two-line text; inactive controls keep the beta21 pale-gray / gray palette.
 - Transparent cut-out areas are excluded from the auxiliary button hit target so taps on the main circle are not intercepted.
 - Start/stop correction behavior is unchanged from beta21.
+
+
+## v1.0-beta23
+- Restores the main START/STOP circle to the exact horizontal center of Today and keeps its 276 dp size unchanged.
+- Moves the two auxiliary correction controls above the main circle in a symmetric upright “Mickey ears” layout: Start from… at upper-left and Stop at… at upper-right.
+- The 88 dp ear buttons keep the beta22 concave cut-out and small separation gap; the cut-outs are mirrored toward the central circle.
+- Active auxiliary controls are softened one shade to muted green (#557A6E) with white text, while inactive controls keep the existing pale-gray / gray styling.
+- All Start from… / Stop at… behavior remains unchanged from beta22.
