@@ -118,3 +118,12 @@ The key alias is fixed to `deeptally`. Keep the private keystore and password ou
 - A week that spans two calendar years uses the larger of those two yearly scales for all seven bars, preventing either side of the year boundary from exceeding the chart scale.
 - Week numbering and the Week picker continue to use ISO week-year rules (the Thursday/4-day rule).
 - History grouping remains Monday-based; no History scale behavior was changed in this release.
+
+
+## v1.0-beta21
+- Adds two secondary Today timer controls while keeping the large central START/STOP circle as the primary action.
+- `Start from…` is available only while idle. It lets the user choose a past date/time, starts the live timer from that timestamp, blocks overlap with existing sessions, and sends the Deep Work START broadcast when confirmed.
+- `Stop at…` is available only while timing. It lets the user choose a past end date/time, saves the session using that corrected endpoint, applies the existing <10 / 10–29 / >=30 minute rules, and sends the Deep Work END broadcast when confirmed.
+- Both controls support cross-midnight corrections through date + time pickers.
+- Active auxiliary controls use the existing pale-green / dark-green Deep Tally palette; inactive controls remain visible in a subdued gray state and do not respond.
+- Existing STOP/UNDO behavior is preserved, including restoring the running timer if an adjusted stop is undone.

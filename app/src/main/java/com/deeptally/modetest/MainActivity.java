@@ -62,8 +62,14 @@ public class MainActivity extends Activity {
     LinearLayout top=new LinearLayout(this);top.setGravity(Gravity.CENTER_VERTICAL);TextView name=Ui.text(this,"Deep Tally",24,Color.rgb(27,32,35),true);top.addView(name,new LinearLayout.LayoutParams(0,-2,1));TextView set=Ui.text(this,"⚙",25,Color.DKGRAY,false);set.setPadding(Ui.dp(this,12),0,Ui.dp(this,8),0);set.setOnClickListener(v->settings());top.addView(set);q.addView(top);
     Ui.space(q,this,16);q.addView(Ui.text(this,"Today",18,Color.rgb(101,110,115),false));
     LocalDate d=LocalDate.now();long dayA=TimeUtils.start(d),dayB=TimeUtils.start(d.plusDays(1));List<Session> xs=db.overlapping(dayA,dayB);long total=TimeUtils.totalWithin(xs,dayA,dayB);q.addView(Ui.text(this,TimeUtils.natural(total),31,Color.rgb(25,31,34),true));Ui.space(q,this,20);
-    timer=new CircleTimerView(this);long st=p.getLong(KSTART,0);timer.setState(st>0,st>0?System.currentTimeMillis()-st:0);timer.setOnClickListener(v->{hapticClick();if(p.getLong(KSTART,0)>0)stop();else start();});
-    LinearLayout hold=new LinearLayout(this);hold.setGravity(Gravity.CENTER);hold.addView(timer,new LinearLayout.LayoutParams(Ui.dp(this,276),Ui.dp(this,276)));q.addView(hold);
+    timer=new CircleTimerView(this);long st=p.getLong(KSTART,0);boolean running=st>0;timer.setState(running,running?System.currentTimeMillis()-st:0);timer.setOnClickListener(v->{hapticClick();if(p.getLong(KSTART,0)>0)stop();else start();});
+    FrameLayout hold=new FrameLayout(this);
+    FrameLayout.LayoutParams tp=new FrameLayout.LayoutParams(Ui.dp(this,276),Ui.dp(this,276),Gravity.CENTER);hold.addView(timer,tp);
+    TextView startFrom=auxTimerButton("Start from…",!running,()->startFromPast());
+    FrameLayout.LayoutParams sfp=new FrameLayout.LayoutParams(Ui.dp(this,104),Ui.dp(this,42),Gravity.TOP|Gravity.RIGHT);sfp.topMargin=Ui.dp(this,34);hold.addView(startFrom,sfp);
+    TextView stopAt=auxTimerButton("Stop at…",running,()->stopAtPast());
+    FrameLayout.LayoutParams sap=new FrameLayout.LayoutParams(Ui.dp(this,104),Ui.dp(this,42),Gravity.BOTTOM|Gravity.RIGHT);sap.bottomMargin=Ui.dp(this,34);hold.addView(stopAt,sap);
+    q.addView(hold,new LinearLayout.LayoutParams(-1,Ui.dp(this,292)));
     if(st>0){TextView x=Ui.text(this,"Completed today · "+TimeUtils.natural(total),13,Color.GRAY,false);x.setGravity(Gravity.CENTER);q.addView(x);h.post(tick);}
     Ui.space(q,this,28);
     LinearLayout sh=new LinearLayout(this);sh.setGravity(Gravity.CENTER_VERTICAL);
@@ -98,8 +104,78 @@ public class MainActivity extends Activity {
     }catch(Throwable ignored){}
   }
 
+  private interface PastTimeHandler{void chosen(long ms);}
+
+  private TextView auxTimerButton(String label,boolean enabled,Runnable action){
+    int text=enabled?Color.rgb(61,106,92):Color.rgb(165,171,173);
+    int bg=enabled?Color.rgb(234,242,239):Color.rgb(241,243,243);
+    TextView v=Ui.text(this,label,12,text,true);v.setGravity(Gravity.CENTER);v.setSingleLine(true);
+    v.setBackground(Ui.bg(this,bg,15));v.setEnabled(enabled);
+    if(enabled)v.setOnClickListener(x->{hapticClick();action.run();});
+    return v;
+  }
+
+  private void choosePastDateTime(String title,long initialMs,PastTimeHandler handler){
+    long now=System.currentTimeMillis();long safe=Math.min(now,Math.max(0,initialMs));
+    ZoneId z=ZoneId.systemDefault();ZonedDateTime initial=Instant.ofEpochMilli(safe).atZone(z);
+    DatePickerDialog dateDialog=new DatePickerDialog(this,(picker,year,month,day)->{
+      TimePickerDialog timeDialog=new TimePickerDialog(this,(tp,hour,minute)->{
+        long chosen=LocalDate.of(year,month+1,day).atTime(hour,minute).atZone(z).toInstant().toEpochMilli();
+        if(chosen>System.currentTimeMillis()){
+          new AlertDialog.Builder(this).setTitle("Future time isn't allowed").setMessage("Choose the current time or an earlier time.").setPositiveButton("OK",null).show();return;
+        }
+        handler.chosen(chosen);
+      },initial.getHour(),initial.getMinute(),true);
+      timeDialog.setTitle(title+" · time");timeDialog.show();
+    },initial.getYear(),initial.getMonthValue()-1,initial.getDayOfMonth());
+    dateDialog.setTitle(title+" · date");dateDialog.getDatePicker().setMaxDate(now);dateDialog.show();
+  }
+
   private void start(){long now=System.currentTimeMillis();p.edit().putLong(KSTART,now).apply();sendDeepWorkSignal(ACTION_DEEP_WORK_START);show(0);}
-  private void stop(){long st=p.getLong(KSTART,0),en=System.currentTimeMillis();if(st<=0||en<=st)return;long dur=en-st;undoStart=st;if(dur>=MIN_RECORD_MS){undoId=db.add(st,en);undo.setText("Session saved · UNDO");}else{undoId=UNDO_NOT_SAVED;undo.setText("Under 10 mins · not saved · UNDO");}p.edit().remove(KSTART).apply();sendDeepWorkSignal(ACTION_DEEP_WORK_END);undo.setVisibility(View.VISIBLE);h.postDelayed(()->{undo.setVisibility(View.GONE);undoId=-1;undoStart=-1;},5000);show(0);}
+
+  private void startFromPast(){
+    if(p.getLong(KSTART,0)>0)return;
+    long now=System.currentTimeMillis();
+    choosePastDateTime("Start from…",now-60L*60L*1000L,chosen->{
+      long current=System.currentTimeMillis();
+      if(chosen>=current){
+        new AlertDialog.Builder(this).setTitle("Choose an earlier time").setMessage("Start from… must be earlier than now.").setPositiveButton("OK",null).show();return;
+      }
+      if(db.overlaps(chosen,current,-1)){
+        new AlertDialog.Builder(this).setTitle("Overlapping session").setMessage("This start time would overlap an existing session.").setPositiveButton("OK",null).show();return;
+      }
+      p.edit().putLong(KSTART,chosen).apply();sendDeepWorkSignal(ACTION_DEEP_WORK_START);show(0);
+    });
+  }
+
+  private void stop(){finishStopAt(System.currentTimeMillis());}
+
+  private void stopAtPast(){
+    long st=p.getLong(KSTART,0);if(st<=0)return;
+    long now=System.currentTimeMillis();
+    choosePastDateTime("Stop at…",now,chosen->{
+      long currentStart=p.getLong(KSTART,0);if(currentStart<=0)return;
+      if(chosen<=currentStart){
+        new AlertDialog.Builder(this).setTitle("Invalid end time").setMessage("Stop at… must be later than the session start.").setPositiveButton("OK",null).show();return;
+      }
+      if(chosen>System.currentTimeMillis()){
+        new AlertDialog.Builder(this).setTitle("Future time isn't allowed").setMessage("Choose the current time or an earlier time.").setPositiveButton("OK",null).show();return;
+      }
+      if(db.overlaps(currentStart,chosen,-1)){
+        new AlertDialog.Builder(this).setTitle("Overlapping session").setMessage("This corrected session would overlap an existing session.").setPositiveButton("OK",null).show();return;
+      }
+      finishStopAt(chosen);
+    });
+  }
+
+  private void finishStopAt(long en){
+    long st=p.getLong(KSTART,0);if(st<=0||en<=st)return;long dur=en-st;undoStart=st;
+    if(dur>=MIN_RECORD_MS){undoId=db.add(st,en);undo.setText("Session saved · UNDO");}
+    else{undoId=UNDO_NOT_SAVED;undo.setText("Under 10 mins · not saved · UNDO");}
+    p.edit().remove(KSTART).apply();sendDeepWorkSignal(ACTION_DEEP_WORK_END);undo.setVisibility(View.VISIBLE);
+    h.postDelayed(()->{undo.setVisibility(View.GONE);undoId=-1;undoStart=-1;},5000);show(0);
+  }
+
   private void undoStop(){if(undoId==-1)return;if(undoId>=0)db.delete(undoId);p.edit().putLong(KSTART,undoStart).apply();sendDeepWorkSignal(ACTION_DEEP_WORK_START);undo.setVisibility(View.GONE);undoId=-1;undoStart=-1;show(0);}
 
   private View sessionRow(Session s){return sessionRow(s,s.startMs,s.endMs);}
