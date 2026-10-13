@@ -66,9 +66,9 @@ public class MainActivity extends Activity {
     FrameLayout hold=new FrameLayout(this);
     FrameLayout.LayoutParams tp=new FrameLayout.LayoutParams(Ui.dp(this,276),Ui.dp(this,276),Gravity.CENTER);hold.addView(timer,tp);
     AuxTimerButtonView startFrom=auxTimerButton("Start","from…",true,!running,()->startFromPast());
-    FrameLayout.LayoutParams sfp=new FrameLayout.LayoutParams(Ui.dp(this,88),Ui.dp(this,88),Gravity.CENTER);startFrom.setTranslationX(-Ui.dp(this,94));startFrom.setTranslationY(-Ui.dp(this,133));hold.addView(startFrom,sfp);
+    FrameLayout.LayoutParams sfp=new FrameLayout.LayoutParams(Ui.dp(this,108),Ui.dp(this,108),Gravity.CENTER);startFrom.setTranslationX(-Ui.dp(this,94));startFrom.setTranslationY(-Ui.dp(this,133));hold.addView(startFrom,sfp);
     AuxTimerButtonView stopAt=auxTimerButton("Stop","at…",false,running,()->stopAtPast());
-    FrameLayout.LayoutParams sap=new FrameLayout.LayoutParams(Ui.dp(this,88),Ui.dp(this,88),Gravity.CENTER);stopAt.setTranslationX(Ui.dp(this,94));stopAt.setTranslationY(-Ui.dp(this,133));hold.addView(stopAt,sap);
+    FrameLayout.LayoutParams sap=new FrameLayout.LayoutParams(Ui.dp(this,108),Ui.dp(this,108),Gravity.CENTER);stopAt.setTranslationX(Ui.dp(this,94));stopAt.setTranslationY(-Ui.dp(this,133));hold.addView(stopAt,sap);
     q.addView(hold,new LinearLayout.LayoutParams(-1,Ui.dp(this,354)));
     if(st>0){TextView x=Ui.text(this,"Completed today · "+TimeUtils.natural(total),13,Color.GRAY,false);x.setGravity(Gravity.CENTER);q.addView(x);h.post(tick);}
     Ui.space(q,this,28);

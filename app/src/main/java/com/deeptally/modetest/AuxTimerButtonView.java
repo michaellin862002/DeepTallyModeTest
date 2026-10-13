@@ -29,14 +29,22 @@ public class AuxTimerButtonView extends View {
 
   protected void onSizeChanged(int w,int h,int oldw,int oldh){
     super.onSizeChanged(w,h,oldw,oldh);
-    float cx=w/2f,cy=h/2f,r=Math.min(w,h)/2f-dp(2);
-    Path ear=new Path();ear.addCircle(cx,cy,r,Path.Direction.CW);
-    Path exclusion=new Path();
+    float cx=w/2f,cy=h/2f;
+    float visualRadius=dp(42),touchRadius=dp(52);
+
     float bigCx=cx+(leftEar?dp(94):-dp(94));
     float bigCy=cy+dp(133);
-    exclusion.addCircle(bigCx,bigCy,dp(137),Path.Direction.CW);
-    shape.set(ear);shape.op(exclusion,Path.Op.DIFFERENCE);
-    Region clip=new Region(0,0,w,h);hit.setPath(shape,clip);
+
+    Path ear=new Path();ear.addCircle(cx,cy,visualRadius,Path.Direction.CW);
+    Path visualExclusion=new Path();
+    visualExclusion.addCircle(bigCx,bigCy,dp(142),Path.Direction.CW);
+    shape.set(ear);shape.op(visualExclusion,Path.Op.DIFFERENCE);
+
+    Path touch=new Path();touch.addCircle(cx,cy,touchRadius,Path.Direction.CW);
+    Path touchExclusion=new Path();
+    touchExclusion.addCircle(bigCx,bigCy,dp(142),Path.Direction.CW);
+    touch.op(touchExclusion,Path.Op.DIFFERENCE);
+    Region clip=new Region(0,0,w,h);hit.setPath(touch,clip);
   }
 
   protected void onDraw(Canvas c){

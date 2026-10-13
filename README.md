@@ -144,3 +144,12 @@ The key alias is fixed to `deeptally`. Keep the private keystore and password ou
 - The 88 dp ear buttons keep the beta22 concave cut-out and small separation gap; the cut-outs are mirrored toward the central circle.
 - Active auxiliary controls are softened one shade to muted green (#557A6E) with white text, while inactive controls keep the existing pale-gray / gray styling.
 - All Start from… / Stop at… behavior remains unchanged from beta22.
+
+
+## v1.0-beta24
+- Reduces accidental taps between the auxiliary correction buttons and the main START/STOP circle without changing the beta23 visual hierarchy.
+- Increases the visible gap around the notched ear buttons from about 5 dp to about 10 dp.
+- Keeps each auxiliary button visually 88 dp, but enlarges its invisible touch target to about 104 dp; the extra hit area expands outward while remaining excluded near the main circle.
+- The main timer now accepts taps only inside its actual circular face instead of its full square View bounds.
+- Adds small invisible no-tap safety zones on the main circle beside the two ear buttons, so near-miss taps are ignored instead of accidentally starting or stopping a session.
+- Start from… / Stop at… behavior, colors, positions, and the centered 276 dp main circle remain otherwise unchanged.
