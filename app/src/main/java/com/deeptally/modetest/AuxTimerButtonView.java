@@ -10,7 +10,8 @@ public class AuxTimerButtonView extends View {
   private final Path shape=new Path();
   private final Region hit=new Region();
   private final String label;
-  private boolean pressedInside=false;
+  private boolean pressedInside=false,running=false;
+  private long elapsed=0;
 
   public AuxTimerButtonView(Context c,String first,String second){
     super(c);
@@ -21,6 +22,8 @@ public class AuxTimerButtonView extends View {
 
   private float dp(float v){return v*getResources().getDisplayMetrics().density;}
   private float sp(float v){return v*getResources().getDisplayMetrics().scaledDensity;}
+
+  public void setState(boolean r,long e){running=r;elapsed=Math.max(0,e);invalidate();}
 
   protected void onSizeChanged(int w,int h,int oldw,int oldh){
     super.onSizeChanged(w,h,oldw,oldh);
@@ -52,7 +55,9 @@ public class AuxTimerButtonView extends View {
   protected void onDraw(Canvas c){
     super.onDraw(c);
     p.setStyle(Paint.Style.FILL);
-    p.setColor(Color.rgb(107,140,130));
+    int fill=!running?Color.rgb(107,140,130):
+      (elapsed>=TimeUtils.THRESHOLD_MS?Color.rgb(85,122,110):Color.rgb(88,112,109));
+    p.setColor(fill);
     c.drawPath(shape,p);
 
     p.setTextAlign(Paint.Align.CENTER);

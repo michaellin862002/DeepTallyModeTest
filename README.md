@@ -191,3 +191,14 @@ The key alias is fixed to `deeptally`. Keep the private keystore and password ou
 - Preserves the same 8 dp visible gap from the main timer.
 - Re-centers Start from… / Stop at… from the actual visible cap geometry instead of using a fixed vertical offset.
 - Keeps the beta27 #6B8C82 background, white text, single-line label, touch-target concept, main-circle circular hit area, small anti-mistap zone, and all timer/session behavior unchanged.
+
+
+## v1.0-beta29
+- Applies the finalized three-state color system to both timer controls so the correction cap changes state together with the main timer.
+- Idle: main #16222A, correction #6B8C82.
+- Running below 30 minutes: main #243847, correction #58706D.
+- Counted at 30 minutes or more: main #1F6A55, correction #557A6E.
+- The correction cap now updates every second with the same elapsed-time state as the main timer, including sessions started through Start from….
+- Adds a subtle static halo around the outer boundary of the combined main timer + correction-cap cluster while Deep Work is running. The halo follows the current running/counting color family, uses a soft low-opacity glow, and has no pulsing, flashing, or startup animation.
+- Idle has no halo.
+- Keeps beta28 geometry, 8 dp visual gap, circular main hit area, small anti-mistap zone, retrospective controls, broadcasts, thresholds, undo behavior, and beta3 haptic unchanged.

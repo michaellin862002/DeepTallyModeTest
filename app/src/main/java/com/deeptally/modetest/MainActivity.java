@@ -26,12 +26,22 @@ public class MainActivity extends Activity {
   private SharedPreferences p; private SessionDb db; private FrameLayout content,root; private LinearLayout nav;
   private int tab=0; private CircleTimerView timer; private final Handler h=new Handler(Looper.getMainLooper());
   private boolean editingBio=false; private EditText b1,b2; private TextView undo;
+  private AuxTimerButtonView correction; private TimerClusterGlowView clusterGlow;
   private long undoId=-1,undoStart=-1;
   private LocalDate shownWeek=TimeUtils.monday(LocalDate.now());
   private int weekSelectedDay=-1;
   private int historyYear=LocalDate.now().getYear();
 
-  private final Runnable tick=new Runnable(){public void run(){long s=p.getLong(KSTART,0);if(s>0&&timer!=null){timer.setState(true,System.currentTimeMillis()-s);h.postDelayed(this,1000);}}};
+  private final Runnable tick=new Runnable(){public void run(){
+    long s=p.getLong(KSTART,0);
+    if(s>0&&timer!=null){
+      long elapsed=System.currentTimeMillis()-s;
+      timer.setState(true,elapsed);
+      if(correction!=null)correction.setState(true,elapsed);
+      if(clusterGlow!=null)clusterGlow.setState(true,elapsed);
+      h.postDelayed(this,1000);
+    }
+  }};
 
   public void onCreate(Bundle b){super.onCreate(b);p=getSharedPreferences(PREF,MODE_PRIVATE);db=new SessionDb(this);if(!p.contains(KGOAL))p.edit().putInt(KGOAL,360).apply();shell();show(0);}
   protected void onDestroy(){h.removeCallbacksAndMessages(null);db.close();super.onDestroy();}
@@ -53,7 +63,7 @@ public class MainActivity extends Activity {
     show(x);
   }
 
-  private void show(int x){tab=x;editingBio=false;h.removeCallbacks(tick);timer=null;content.removeAllViews();for(int i=0;i<4;i++){TextView v=(TextView)nav.getChildAt(i);v.setTextColor(i==x?Color.rgb(27,105,84):Color.rgb(110,118,122));v.setTypeface(i==x?android.graphics.Typeface.DEFAULT_BOLD:android.graphics.Typeface.DEFAULT);}if(x==0)today();else if(x==1)week();else if(x==2)history();else bio();}
+  private void show(int x){tab=x;editingBio=false;h.removeCallbacks(tick);timer=null;correction=null;clusterGlow=null;content.removeAllViews();for(int i=0;i<4;i++){TextView v=(TextView)nav.getChildAt(i);v.setTextColor(i==x?Color.rgb(27,105,84):Color.rgb(110,118,122));v.setTypeface(i==x?android.graphics.Typeface.DEFAULT_BOLD:android.graphics.Typeface.DEFAULT);}if(x==0)today();else if(x==1)week();else if(x==2)history();else bio();}
   private ScrollView page(LinearLayout[] out){ScrollView s=Ui.scroll(this);LinearLayout q=Ui.page(this);s.addView(q);out[0]=q;return s;}
   private PeriodScrollView periodPage(LinearLayout[] out){PeriodScrollView s=new PeriodScrollView(this);s.setFillViewport(true);s.setClipToPadding(false);s.setBackgroundColor(Color.rgb(247,248,249));LinearLayout q=Ui.page(this);s.addView(q);out[0]=q;return s;}
 
@@ -62,10 +72,16 @@ public class MainActivity extends Activity {
     LinearLayout top=new LinearLayout(this);top.setGravity(Gravity.CENTER_VERTICAL);TextView name=Ui.text(this,"Deep Tally",24,Color.rgb(27,32,35),true);top.addView(name,new LinearLayout.LayoutParams(0,-2,1));TextView set=Ui.text(this,"⚙",25,Color.DKGRAY,false);set.setPadding(Ui.dp(this,12),0,Ui.dp(this,8),0);set.setOnClickListener(v->settings());top.addView(set);q.addView(top);
     Ui.space(q,this,16);q.addView(Ui.text(this,"Today",18,Color.rgb(101,110,115),false));
     LocalDate d=LocalDate.now();long dayA=TimeUtils.start(d),dayB=TimeUtils.start(d.plusDays(1));List<Session> xs=db.overlapping(dayA,dayB);long total=TimeUtils.totalWithin(xs,dayA,dayB);q.addView(Ui.text(this,TimeUtils.natural(total),31,Color.rgb(25,31,34),true));Ui.space(q,this,20);
-    timer=new CircleTimerView(this);long st=p.getLong(KSTART,0);boolean running=st>0;timer.setState(running,running?System.currentTimeMillis()-st:0);timer.setOnClickListener(v->{hapticClick();if(p.getLong(KSTART,0)>0)stop();else start();});
+    long st=p.getLong(KSTART,0);boolean running=st>0;long elapsed=running?System.currentTimeMillis()-st:0;
+    timer=new CircleTimerView(this);timer.setState(running,elapsed);timer.setOnClickListener(v->{hapticClick();if(p.getLong(KSTART,0)>0)stop();else start();});
     FrameLayout hold=new FrameLayout(this);
+
+    clusterGlow=new TimerClusterGlowView(this);clusterGlow.setState(running,elapsed);
+    hold.addView(clusterGlow,new FrameLayout.LayoutParams(-1,-1));
+
     FrameLayout.LayoutParams tp=new FrameLayout.LayoutParams(Ui.dp(this,276),Ui.dp(this,276),Gravity.CENTER);timer.setTranslationY(Ui.dp(this,16));hold.addView(timer,tp);
-    AuxTimerButtonView correction=auxTimerButton(running?"Stop":"Start",running?"at…":"from…",running?()->stopAtPast():()->startFromPast());
+    correction=auxTimerButton(running?"Stop":"Start",running?"at…":"from…",running?()->stopAtPast():()->startFromPast());
+    correction.setState(running,elapsed);
     FrameLayout.LayoutParams cp=new FrameLayout.LayoutParams(Ui.dp(this,143),Ui.dp(this,143),Gravity.CENTER);correction.setTranslationY(-Ui.dp(this,113));hold.addView(correction,cp);
     q.addView(hold,new LinearLayout.LayoutParams(-1,Ui.dp(this,400)));
     if(st>0){TextView x=Ui.text(this,"Completed today · "+TimeUtils.natural(total),13,Color.GRAY,false);x.setGravity(Gravity.CENTER);q.addView(x);h.post(tick);}

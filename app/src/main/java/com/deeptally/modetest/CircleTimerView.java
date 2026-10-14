@@ -66,7 +66,7 @@ public class CircleTimerView extends View{
 
   protected void onDraw(Canvas c){
     float x=getWidth()/2f,y=getHeight()/2f,r=Math.min(getWidth(),getHeight())/2f-dp(6);
-    int fill=!running?Color.rgb(24,39,45):(elapsed>=TimeUtils.THRESHOLD_MS?Color.rgb(29,89,75):Color.rgb(35,54,66));
+    int fill=!running?Color.rgb(22,34,42):(elapsed>=TimeUtils.THRESHOLD_MS?Color.rgb(31,106,85):Color.rgb(36,56,71));
     p.setStyle(Paint.Style.FILL);p.setColor(fill);c.drawCircle(x,y,r,p);
     p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(dp(2));p.setColor(Color.argb(45,255,255,255));c.drawCircle(x,y,r-dp(1),p);
     if(!running){
