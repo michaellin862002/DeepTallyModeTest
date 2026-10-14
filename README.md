@@ -182,3 +182,12 @@ The key alias is fixed to `deeptally`. Keep the private keystore and password ou
 - Keeps the main timer at the beta26 position, keeps its hit area strictly circular, and keeps the small 18 dp anti-mistap safety zone unchanged.
 - The correction button retains an enlarged touch target that is clipped away from the gap and main timer.
 - All overlap checks, thresholds, broadcasts, undo behavior, backup behavior, and beta3 light haptic are unchanged.
+
+
+## v1.0-beta28
+- Makes only a small visual refinement to the beta27 correction control.
+- Increases the underlying secondary-circle diameter by about 3 dp (120 dp → 123 dp) to give the one-line label more breathing room at the sides.
+- Keeps the beta27 main-circle embedding proportion visually consistent by compensating the center spacing slightly rather than exposing more of the lower circle.
+- Preserves the same 8 dp visible gap from the main timer.
+- Re-centers Start from… / Stop at… from the actual visible cap geometry instead of using a fixed vertical offset.
+- Keeps the beta27 #6B8C82 background, white text, single-line label, touch-target concept, main-circle circular hit area, small anti-mistap zone, and all timer/session behavior unchanged.

@@ -25,13 +25,15 @@ public class AuxTimerButtonView extends View {
   protected void onSizeChanged(int w,int h,int oldw,int oldh){
     super.onSizeChanged(w,h,oldw,oldh);
     float cx=w/2f,cy=h/2f;
-    float visualRadius=dp(60),touchRadius=dp(68);
+    float visualRadius=dp(61.5f),touchRadius=dp(69.5f);
 
-    // The main timer center is 130 dp below this button center.
-    // A 140 dp exclusion radius stays 8 dp outside the main timer's
-    // 132 dp painted radius, while cutting much deeper into this larger
-    // secondary circle to create a slimmer horizontal cap.
-    float bigCx=cx,bigCy=cy+dp(130);
+    // The underlying circle grows by 3 dp in diameter while the center
+    // distance is reduced by about 1 dp. This keeps the beta27 embedded
+    // proportion visually the same instead of exposing extra lower area.
+    // The 140 dp exclusion radius still preserves the 8 dp visual gap
+    // from the main timer's 132 dp painted radius.
+    float centerDistance=dp(129);
+    float bigCx=cx,bigCy=cy+centerDistance;
 
     Path button=new Path();button.addCircle(cx,cy,visualRadius,Path.Direction.CW);
     Path visualExclusion=new Path();
@@ -59,7 +61,15 @@ public class AuxTimerButtonView extends View {
     p.setColor(Color.WHITE);
     Paint.FontMetrics fm=p.getFontMetrics();
     float x=getWidth()/2f;
-    float y=getHeight()/2f-dp(31)-(fm.ascent+fm.descent)/2f;
+
+    // Re-center the single-line label inside the actual visible cap.
+    // The lower visible boundary is the intersection chord between the
+    // secondary circle and the 8 dp-offset main-circle exclusion.
+    float visualRadius=dp(61.5f),exclusionRadius=dp(140),centerDistance=dp(129);
+    float chordY=(visualRadius*visualRadius-exclusionRadius*exclusionRadius+
+      centerDistance*centerDistance)/(2f*centerDistance);
+    float capCenterY=getHeight()/2f+(chordY-visualRadius)/2f;
+    float y=capCenterY-(fm.ascent+fm.descent)/2f;
     c.drawText(label,x,y,p);
   }
 
