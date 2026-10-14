@@ -202,3 +202,14 @@ The key alias is fixed to `deeptally`. Keep the private keystore and password ou
 - Adds a subtle static halo around the outer boundary of the combined main timer + correction-cap cluster while Deep Work is running. The halo follows the current running/counting color family, uses a soft low-opacity glow, and has no pulsing, flashing, or startup animation.
 - Idle has no halo.
 - Keeps beta28 geometry, 8 dp visual gap, circular main hit area, small anti-mistap zone, retrospective controls, broadcasts, thresholds, undo behavior, and beta3 haptic unchanged.
+
+
+## v1.0-beta30
+- Simplifies the Today timer visual system from three color states to two.
+- Idle remains: main #16222A, correction #6B8C82.
+- Any active Deep Work session now stays in one consistent running palette from the first second onward: main #243847, correction #58706D.
+- Crossing the 30-minute threshold no longer changes either button color. The existing Counts after 30:00 / COUNTED ✓ text and all counting/statistics rules are preserved.
+- Reworks the running halo into pure soft ambient light: no stroke, no outline, no bright rim, and no animated effect.
+- The halo uses only low-opacity filled silhouettes with broad blur/shadow and a subtle connection between the two controls so they read as one focus cluster.
+- Idle still has no halo.
+- Keeps beta29 geometry, 8 dp visual gap, hit areas, retrospective controls, broadcasts, undo, backup, and beta3 haptic unchanged.

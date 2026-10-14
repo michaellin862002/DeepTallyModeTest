@@ -55,8 +55,7 @@ public class AuxTimerButtonView extends View {
   protected void onDraw(Canvas c){
     super.onDraw(c);
     p.setStyle(Paint.Style.FILL);
-    int fill=!running?Color.rgb(107,140,130):
-      (elapsed>=TimeUtils.THRESHOLD_MS?Color.rgb(85,122,110):Color.rgb(88,112,109));
+    int fill=!running?Color.rgb(107,140,130):Color.rgb(88,112,109);
     p.setColor(fill);
     c.drawPath(shape,p);
 

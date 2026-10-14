@@ -7,7 +7,6 @@ import android.view.*;
 public class TimerClusterGlowView extends View {
   private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);
   private boolean running=false;
-  private long elapsed=0;
 
   public TimerClusterGlowView(Context c){
     super(c);
@@ -19,7 +18,7 @@ public class TimerClusterGlowView extends View {
   private float dp(float v){return v*getResources().getDisplayMetrics().density;}
 
   public void setState(boolean r,long e){
-    running=r;elapsed=Math.max(0,e);invalidate();
+    running=r;invalidate();
   }
 
   protected void onDraw(Canvas c){
@@ -32,29 +31,30 @@ public class TimerClusterGlowView extends View {
     float smallCy=cy-dp(113);
     float smallR=dp(61.5f);
 
-    Path small=new Path();
-    small.addCircle(cx,smallCy,smallR,Path.Direction.CW);
-    Path exclusion=new Path();
-    exclusion.addCircle(cx,bigCy,dp(140),Path.Direction.CW);
-    small.op(exclusion,Path.Op.DIFFERENCE);
+    // One soft cluster silhouette, deliberately drawn with FILL only.
+    // There is no stroke/outline, so the glow has no visible line edge.
+    Path cluster=new Path();
+    cluster.addCircle(cx,bigCy,bigR,Path.Direction.CW);
+    cluster.addCircle(cx,smallCy,smallR,Path.Direction.CW);
 
-    int base=elapsed>=TimeUtils.THRESHOLD_MS?Color.rgb(85,122,110):Color.rgb(88,112,109);
-    int r=Color.red(base),g=Color.green(base),b=Color.blue(base);
+    // A tiny low-alpha bridge makes both controls read as one ambient
+    // focus field without painting a hard contour through the 8 dp gap.
+    RectF bridge=new RectF(cx-dp(28),smallCy+dp(42),cx+dp(28),bigCy-bigR+dp(18));
+    if(bridge.bottom>bridge.top)cluster.addRoundRect(bridge,dp(22),dp(22),Path.Direction.CW);
 
-    p.setStyle(Paint.Style.STROKE);
-    p.setStrokeCap(Paint.Cap.ROUND);
-    p.setStrokeJoin(Paint.Join.ROUND);
-    p.setStrokeWidth(dp(2.2f));
-    p.setColor(Color.argb(72,r,g,b));
-    p.setShadowLayer(dp(13),0,0,Color.argb(92,r,g,b));
+    int r=88,g=112,b=109;
 
-    c.drawCircle(cx,bigCy,bigR+dp(1),p);
-    c.drawPath(small,p);
+    // Broad ambient bloom.
+    p.setStyle(Paint.Style.FILL);
+    p.setColor(Color.argb(5,r,g,b));
+    p.setShadowLayer(dp(28),0,0,Color.argb(38,r,g,b));
+    c.drawPath(cluster,p);
+
+    // Slightly denser inner bloom, still with no outline.
+    p.setColor(Color.argb(3,r,g,b));
+    p.setShadowLayer(dp(16),0,0,Color.argb(34,r,g,b));
+    c.drawPath(cluster,p);
 
     p.clearShadowLayer();
-    p.setStrokeWidth(dp(5));
-    p.setColor(Color.argb(18,r,g,b));
-    c.drawCircle(cx,bigCy,bigR+dp(3),p);
-    c.drawPath(small,p);
   }
 }
